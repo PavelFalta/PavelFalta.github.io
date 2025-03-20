@@ -115,7 +115,7 @@ const TrafficLight = () => {
           Klik na blik a dej vyučujícímu feedback tento okamžik! <br />
         </p>
         
-        {/* Session ID  - Shown at bottom on mobile */}
+        {/* Session ID  - Shown at bottom on mobile*/}
         <p className="mt-4 text-gray-400 md:hidden block">
           Session ID: <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">{sessionId}</span>
         </p>
