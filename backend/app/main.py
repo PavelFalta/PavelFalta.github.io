@@ -81,6 +81,31 @@ async def get_session(session_id: str):
     
     return sessions[session_id]
 
+@app.get("/list-sessions")
+async def list_sessions():
+    # Prepare a list of sessions with user counts
+    session_list = []
+    
+    for session_id, session_data in sessions.items():
+        # Skip sessions that are marked as inactive
+        if session_id in inactive_sessions:
+            continue
+            
+        # Calculate total users in this session
+        total_users = sum(session_data["lights"].values())
+        
+        # Only include sessions with at least one user
+        if total_users > 0:
+            session_list.append({
+                "session_id": session_id,
+                "user_count": total_users
+            })
+    
+    # Sort sessions by user count (descending)
+    sorted_sessions = sorted(session_list, key=lambda x: x["user_count"], reverse=True)
+    
+    return {"sessions": sorted_sessions}
+
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
