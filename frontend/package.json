@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist -b master -m \"Deploy traffic light app to GitHub Pages\"",
+    "deploy-direct": "npm run build && node deploy-direct.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.14",
