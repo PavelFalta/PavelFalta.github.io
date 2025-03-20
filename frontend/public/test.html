@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GitHub Pages Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GitHub Pages Test Page</h1>
+    <p>If you can see this page, GitHub Pages is working correctly!</p>
+    <p>Try the <a href="./index.html">main application</a>.</p>
+    <p>Current time: <span id="time"></span></p>
+  </div>
+
+  <script>
+    document.getElementById('time').textContent = new Date().toLocaleString();
+  </script>
+</body>
+</html> 
