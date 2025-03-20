@@ -78,10 +78,10 @@ const Home = () => {
       const data = await response.json();
       
       if (response.ok) {
-        // Generate direct URL skipping the base path in hash navigation
-        const baseUrl = window.location.origin;
-        const hashPath = `${baseUrl}/#/traffic-light/${data.session_id}`;
-        setGeneratedUrl(hashPath);
+        // Generate URL for GitHub Pages with correct hash path
+        const baseUrl = window.location.origin + '/traffic-light';
+        const hashPath = `/#/${data.session_id}`;
+        setGeneratedUrl(baseUrl + hashPath);
       } else {
         setError(`Failed to create a session. Server responded with: ${response.status} ${response.statusText}. Details: ${JSON.stringify(data)}`);
       }
@@ -99,7 +99,7 @@ const Home = () => {
       // Extract just the session ID
       const sessionId = generatedUrl.split('/').pop();
       if (sessionId) {
-        navigate(`/traffic-light/${sessionId}`);
+        navigate(`/${sessionId}`);
       }
     }
   };

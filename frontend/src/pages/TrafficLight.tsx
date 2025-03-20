@@ -31,7 +31,12 @@ const TrafficLight = () => {
 
   // Copy current URL to clipboard
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(window.location.href)
+    // Generate URL with correct format 
+    const baseUrl = window.location.origin + '/traffic-light';
+    const hashPath = `/#/${sessionId}`;
+    const fullUrl = baseUrl + hashPath;
+    
+    navigator.clipboard.writeText(fullUrl)
       .then(() => {
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 2000);

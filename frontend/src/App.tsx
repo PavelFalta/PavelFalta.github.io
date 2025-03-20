@@ -9,7 +9,7 @@ function App() {
         <div className="container mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/traffic-light/:sessionId" element={<TrafficLight />} />
+            <Route path="/:sessionId" element={<TrafficLight />} />
           </Routes>
         </div>
       </div>
