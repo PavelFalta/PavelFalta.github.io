@@ -78,7 +78,7 @@ const Home = () => {
       const data = await response.json();
       
       if (response.ok) {
-        // Generate URL for HashRouter (using #/ format)
+        // Generate URL for HashRouter with consistent format
         const baseUrl = window.location.origin;
         const hashPath = `/#/traffic-light/${data.session_id}`;
         setGeneratedUrl(baseUrl + hashPath);
@@ -96,9 +96,11 @@ const Home = () => {
 
   const handleJoinSession = () => {
     if (generatedUrl) {
-      // Extract the hash path for HashRouter
-      const hashPath = generatedUrl.split('#')[1] || '';
-      navigate(hashPath);
+      // Extract the session ID directly from the URL
+      const sessionId = generatedUrl.split('/traffic-light/')[1];
+      if (sessionId) {
+        navigate(`/traffic-light/${sessionId}`);
+      }
     }
   };
 
