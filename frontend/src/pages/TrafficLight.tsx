@@ -13,8 +13,8 @@ const TrafficLight = () => {
   // Ensure sessionId is defined
   const safeSessionId = sessionId || '';
   
-  // Connect to WebSocket - omit wsUrl from destructuring since it's only used in UI
-  const { isConnected, data, error, sendMessage } = useWebSocket(safeSessionId);
+  // Connect to WebSocket - include wsUrl in destructuring since we need it for display
+  const { isConnected, data, error, sendMessage, wsUrl } = useWebSocket(safeSessionId);
 
   // Handle traffic light selection
   const handleLightSelect = (light: Light) => {
@@ -121,16 +121,10 @@ const TrafficLight = () => {
           Session ID: <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">{sessionId}</span>
         </p>
         
-        {/* We need to get the wsUrl for display */}
-        {(() => {
-          // Reconnect to get the wsUrl for display purposes
-          const { wsUrl } = useWebSocket(safeSessionId);
-          return (
-            <p className="mt-2 text-xs opacity-50">
-              WebSocket: {wsUrl}
-            </p>
-          );
-        })()}
+        {/* Display WebSocket URL without creating a new connection */}
+        <p className="mt-2 text-xs opacity-50">
+          WebSocket: {wsUrl}
+        </p>
       </div>
     </div>
   );
