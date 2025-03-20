@@ -13,8 +13,8 @@ const TrafficLight = () => {
   // Ensure sessionId is defined
   const safeSessionId = sessionId || '';
   
-  // Connect to WebSocket - include wsUrl in destructuring since we need it for display
-  const { isConnected, data, error, sendMessage, wsUrl } = useWebSocket(safeSessionId);
+  // Connect to WebSocket
+  const { isConnected, data, error, sendMessage } = useWebSocket(safeSessionId);
 
   // Handle traffic light selection
   const handleLightSelect = (light: Light) => {
@@ -53,7 +53,7 @@ const TrafficLight = () => {
           <h1 className="text-xl font-bold text-white mb-2">Invalid Session</h1>
           <p className="text-gray-300 mb-4">No session ID provided.</p>
           <Link to="/" className="inline-block bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-md transition">
-            Back to Home
+            Zpět
           </Link>
         </div>
       </div>
@@ -67,7 +67,7 @@ const TrafficLight = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
-          Back to Home
+          Zpět
         </Link>
         
         <button 
@@ -78,15 +78,15 @@ const TrafficLight = () => {
             <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
             <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
           </svg>
-          {copySuccess ? 'URL Copied!' : 'Copy URL'}
+          {copySuccess ? 'Zkopírováno!' : 'Zkopírovat'}
         </button>
       </div>
       
-      <h1 className="text-3xl font-bold mb-2 text-center text-white">Traffic Light Session</h1>
+      <h1 className="text-3xl font-bold mb-2 text-center text-white">Výukový Semafor</h1>
       
       {/* Session ID - Shown at top on desktop, moved to bottom section on mobile */}
       <p className="text-gray-400 mb-6 text-center md:block hidden">
-        Session ID: <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">{sessionId}</span>
+        Session ID: <span className="font-mono text-sm bg-gray-800 px-2 py-1 rounded">{sessionId}</span>
       </p>
       
       {error && (
@@ -98,7 +98,7 @@ const TrafficLight = () => {
       {!isConnected && !error && (
         <div className="bg-gray-800 rounded-lg p-6 mb-6 w-full max-w-md mx-4 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mr-3"></div>
-          <p className="text-gray-300">Connecting to session...</p>
+          <p className="text-gray-300">Připojování k místnosti...</p>
         </div>
       )}
       
@@ -112,18 +112,12 @@ const TrafficLight = () => {
       
       <div className="mt-8 text-center text-gray-500 text-sm px-4">
         <p>
-          Click on a light to switch your selection. <br />
-          Green is selected by default.
+          Klik na blik a dej vyučujícímu feedback tento okamžik! <br />
         </p>
         
         {/* Session ID - Shown at bottom on mobile */}
         <p className="mt-4 text-gray-400 md:hidden block">
           Session ID: <span className="font-mono text-xs bg-gray-800 px-2 py-1 rounded">{sessionId}</span>
-        </p>
-        
-        {/* Display WebSocket URL without creating a new connection */}
-        <p className="mt-2 text-xs opacity-50">
-          WebSocket: {wsUrl}
         </p>
       </div>
     </div>
