@@ -1,0 +1,182 @@
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+import uuid
+import random
+import string
+from typing import Dict, List, Set
+import json
+import os
+from dotenv import load_dotenv
+import asyncio
+import time
+from datetime import datetime, timedelta
+
+
+load_dotenv()
+
+app = FastAPI(
+    title="Traffic Light API",
+    description="A FastAPI backend for the Traffic Light real-time application",
+    version="1.0.0"
+)
+
+
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost")
+frontend_urls = [
+    frontend_url,
+    "http://localhost:5173",  
+    "http://localhost",        
+    "https://pavelfalta.github.io"  
+]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for now - you can restrict this in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+sessions: Dict[str, Dict] = {}
+connections: Dict[str, List[WebSocket]] = {}
+
+inactive_sessions: Dict[str, datetime] = {}
+
+
+def generate_short_id(length=8):
+    
+    chars = string.ascii_lowercase + '23456789'
+    while True:
+        
+        session_id = ''.join(random.choice(chars) for _ in range(length))
+        
+        if session_id not in sessions:
+            return session_id
+
+@app.get("/")
+async def read_root():
+    return {"message": "Traffic Light API"}
+
+@app.post("/create-session")
+async def create_session():
+    
+    session_id = generate_short_id()
+    sessions[session_id] = {
+        "lights": {
+            "red": 0,
+            "yellow": 0,
+            "green": 0  
+        }
+    }
+    connections[session_id] = []
+    
+    return {"session_id": session_id, "url": f"/traffic-light/{session_id}"}
+
+@app.get("/session/{session_id}")
+async def get_session(session_id: str):
+    if session_id not in sessions:
+        return {"error": "Session not found"}
+    
+    return sessions[session_id]
+
+@app.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    await websocket.accept()
+    
+    if session_id not in sessions:
+        await websocket.close(code=1000, reason="Session not found")
+        return
+    
+    
+    if session_id not in connections:
+        connections[session_id] = []
+    connections[session_id].append(websocket)
+    
+    
+    if session_id in inactive_sessions:
+        del inactive_sessions[session_id]
+    
+    
+    user_light = "green"
+    sessions[session_id]["lights"][user_light] += 1
+    
+    
+    await broadcast_update(session_id)
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                message = json.loads(data)
+                if message.get("type") == "select_light" and "light" in message:
+                    new_light = message["light"]
+                    if new_light in ["red", "yellow", "green"] and new_light != user_light:
+                        
+                        sessions[session_id]["lights"][user_light] -= 1
+                        sessions[session_id]["lights"][new_light] += 1
+                        user_light = new_light
+                        
+                        
+                        await broadcast_update(session_id)
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        
+        sessions[session_id]["lights"][user_light] -= 1
+        connections[session_id].remove(websocket)
+        
+        
+        total_users = sum(sessions[session_id]["lights"].values())
+        if total_users == 0:
+            
+            inactive_sessions[session_id] = datetime.now()
+        
+        
+        await broadcast_update(session_id)
+
+async def broadcast_update(session_id: str):
+    if session_id in connections:
+        message = json.dumps({
+            "type": "update",
+            "data": sessions[session_id]
+        })
+        
+        
+        for connection in connections[session_id]:
+            try:
+                await connection.send_text(message)
+            except:
+                pass
+
+
+async def cleanup_inactive_sessions():
+    while True:
+        try:
+            now = datetime.now()
+            
+            session_ids = list(inactive_sessions.keys())
+            
+            for session_id in session_ids:
+                if session_id in inactive_sessions:
+                    inactive_time = inactive_sessions[session_id]
+                    
+                    if now - inactive_time > timedelta(hours=1):
+                        
+                        if session_id in sessions:
+                            del sessions[session_id]
+                        if session_id in connections:
+                            del connections[session_id]
+                        del inactive_sessions[session_id]
+                        print(f"Cleaned up inactive session: {session_id}")
+        except Exception as e:
+            print(f"Error in cleanup task: {e}")
+            
+        
+        await asyncio.sleep(600)
+
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(cleanup_inactive_sessions()) 
