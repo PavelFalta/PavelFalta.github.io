@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/* Ensure dark background extends to all scrollable areas */
+html, body {
+  background-color: #111827; /* dark gray-900 */
+  min-height: 100%;
+  overscroll-behavior: none; /* Prevents bounce effects showing white on mobile */
+}
+
+/* For iOS devices that might need extra help */
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ensure the root element fills at least the entire viewport */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
