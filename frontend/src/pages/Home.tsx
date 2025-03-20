@@ -78,10 +78,10 @@ const Home = () => {
       const data = await response.json();
       
       if (response.ok) {
-        // Generate URL for HashRouter with consistent format
+        // Generate direct URL skipping the base path in hash navigation
         const baseUrl = window.location.origin;
-        const hashPath = `/#/traffic-light/${data.session_id}`;
-        setGeneratedUrl(baseUrl + hashPath);
+        const hashPath = `${baseUrl}/#/traffic-light/${data.session_id}`;
+        setGeneratedUrl(hashPath);
       } else {
         setError(`Failed to create a session. Server responded with: ${response.status} ${response.statusText}. Details: ${JSON.stringify(data)}`);
       }
@@ -96,8 +96,8 @@ const Home = () => {
 
   const handleJoinSession = () => {
     if (generatedUrl) {
-      // Extract the session ID directly from the URL
-      const sessionId = generatedUrl.split('/traffic-light/')[1];
+      // Extract just the session ID
+      const sessionId = generatedUrl.split('/').pop();
       if (sessionId) {
         navigate(`/traffic-light/${sessionId}`);
       }

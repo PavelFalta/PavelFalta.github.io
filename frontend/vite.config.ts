@@ -5,6 +5,6 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // Use root path for GitHub Pages
-  base: '',
+  // Use project path for GitHub Project Pages
+  base: '/traffic-light/',
 })
