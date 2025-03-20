@@ -17,6 +17,7 @@ const Home = () => {
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isQrExpanded, setIsQrExpanded] = useState(false);
+  const [isQrHovered, setIsQrHovered] = useState(false);
   const [maxScale, setMaxScale] = useState(3);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
@@ -161,8 +162,23 @@ const Home = () => {
     setIsQrExpanded(!isQrExpanded);
   };
 
+  const handleQrMouseEnter = () => {
+    setIsQrHovered(true);
+  };
+
+  const handleQrMouseLeave = () => {
+    setIsQrHovered(false);
+  };
+
   const toggleActiveSessions = () => {
     setShowActiveSessions(!showActiveSessions);
+  };
+
+  // Get the current scale based on expanded/hovered state
+  const getQrCodeScale = () => {
+    if (isQrExpanded) return maxScale;
+    if (isQrHovered) return maxScale;
+    return 1;
   };
 
   return (
@@ -257,17 +273,19 @@ const Home = () => {
             {/* Modern QR Code with hover and click animation - responsive scaling */}
             <div className="flex justify-center items-center">
               <div 
-                className={`bg-white p-4 rounded-lg transform transition-all duration-300 cursor-pointer hover:shadow-2xl will-change-transform ${isQrExpanded ? `scale-[${maxScale}]` : `hover:scale-[${maxScale}]`}`}
+                className="bg-white p-4 rounded-lg transform transition-all duration-300 cursor-pointer hover:shadow-2xl will-change-transform"
                 style={{ 
                   width: '160px',
                   height: '160px',
                   transformOrigin: 'center center',
                   perspective: '1000px',
                   zIndex: isQrExpanded ? 20 : 10,
-                  transform: isQrExpanded ? `scale(${maxScale})` : 'scale(1)'
+                  transform: `scale(${getQrCodeScale()})`
                 }}
                 ref={qrCodeRef}
                 onClick={toggleQrExpansion}
+                onMouseEnter={handleQrMouseEnter}
+                onMouseLeave={handleQrMouseLeave}
               >
                 <QRCode
                   value={generatedUrl || ''}
