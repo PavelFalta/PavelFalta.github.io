@@ -23,7 +23,6 @@ fs.writeFileSync(indexPath, html);
 try {
   fs.copyFileSync(path.join(process.cwd(), 'public', '.nojekyll'), path.join(process.cwd(), 'dist', '.nojekyll'));
   fs.copyFileSync(path.join(process.cwd(), 'public', '404.html'), path.join(process.cwd(), 'dist', '404.html'));
-  fs.copyFileSync(path.join(process.cwd(), 'public', 'test.html'), path.join(process.cwd(), 'dist', 'test.html'));
 } catch (error) {
   console.error('Error copying files:', error);
 }
