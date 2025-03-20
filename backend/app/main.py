@@ -89,20 +89,30 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         await websocket.close(code=1000, reason="Session not found")
         return
     
-    
+    # Add or initialize connection list for this session
     if session_id not in connections:
         connections[session_id] = []
+    
+    # Store this websocket connection so we can track it
     connections[session_id].append(websocket)
     
-    
+    # Remove from inactive sessions if it was marked as inactive
     if session_id in inactive_sessions:
         del inactive_sessions[session_id]
     
-    
+    # Set default light selection without incrementing the counter yet
+    # We'll only increment once we're sure this is a unique connection
     user_light = "green"
-    sessions[session_id]["lights"][user_light] += 1
     
+    # Check if this is a unique connection before incrementing
+    if len(connections[session_id]) == 1 or all(conn != websocket for conn in connections[session_id][:-1]):
+        # This is a new unique connection, so increment the counter
+        sessions[session_id]["lights"][user_light] += 1
+        # Track that this connection has incremented a counter
+        setattr(websocket, "has_incremented", True)
+        setattr(websocket, "current_light", user_light)
     
+    # Broadcast the update to all clients
     await broadcast_update(session_id)
     
     try:
@@ -113,27 +123,37 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 if message.get("type") == "select_light" and "light" in message:
                     new_light = message["light"]
                     if new_light in ["red", "yellow", "green"] and new_light != user_light:
-                        
-                        sessions[session_id]["lights"][user_light] -= 1
-                        sessions[session_id]["lights"][new_light] += 1
+                        # Only update counts if this connection has incremented a counter
+                        if hasattr(websocket, "has_incremented") and websocket.has_incremented:
+                            sessions[session_id]["lights"][user_light] -= 1
+                            sessions[session_id]["lights"][new_light] += 1
+                            
+                        # Update the user's current light selection
                         user_light = new_light
+                        if hasattr(websocket, "current_light"):
+                            websocket.current_light = new_light
                         
-                        
+                        # Broadcast the update to all clients
                         await broadcast_update(session_id)
             except json.JSONDecodeError:
                 pass
     except WebSocketDisconnect:
+        # Only update counts if this connection has incremented a counter
+        if hasattr(websocket, "has_incremented") and websocket.has_incremented:
+            current_light = getattr(websocket, "current_light", user_light)
+            sessions[session_id]["lights"][current_light] -= 1
         
-        sessions[session_id]["lights"][user_light] -= 1
-        connections[session_id].remove(websocket)
+        # Remove this websocket from the connections list
+        if websocket in connections[session_id]:
+            connections[session_id].remove(websocket)
         
-        
+        # Check if session is now empty
         total_users = sum(sessions[session_id]["lights"].values())
         if total_users == 0:
-            
+            # Mark session as inactive for future cleanup
             inactive_sessions[session_id] = datetime.now()
         
-        
+        # Broadcast the update to remaining clients
         await broadcast_update(session_id)
 
 async def broadcast_update(session_id: str):
