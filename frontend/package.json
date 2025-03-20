@@ -3,9 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://pavelfalta.github.io/traffic-light/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "node fix-paths.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
