@@ -184,9 +184,9 @@ const Home = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh]">
       <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg" ref={containerRef}>
-        <h1 className="text-4xl font-bold text-center mb-8 text-green-400">Traffic Light</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 text-green-400">Výukový Semafor</h1>
         <p className="text-gray-300 mb-8 text-center">
-          Create a traffic light session and share the URL with others to see real-time selections.
+          Vytvoř si místnost, nasdílej studentům, sleduj real-time feedback a přizpůsob rychlost výuky!.
         </p>
         
         {!generatedUrl ? (
@@ -196,7 +196,7 @@ const Home = () => {
               disabled={isLoading}
               className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-6 rounded-md shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-70"
             >
-              {isLoading ? 'Creating Session...' : 'Start New Session'}
+              {isLoading ? 'Místnost se připravuje...' : 'Vytvořit Místnost'}
             </button>
             
             <div className="text-center">
@@ -211,13 +211,13 @@ const Home = () => {
               onClick={toggleActiveSessions}
               className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-md transition"
             >
-              {showActiveSessions ? 'Hide Active Sessions' : 'Join Existing Session'}
+              {showActiveSessions ? 'Skrýt Existující Místnosti' : 'Připojit se k Existující Místnosti'}
             </button>
             
             {/* Active Sessions Section */}
             {showActiveSessions && (
               <div className="mt-4">
-                <h3 className="text-xl font-semibold mb-3 text-white">Active Sessions</h3>
+                <h3 className="text-xl font-semibold mb-3 text-white">Otevřené místnosti</h3>
                 
                 {isLoadingSessions ? (
                   <div className="flex justify-center items-center py-8">
@@ -249,7 +249,7 @@ const Home = () => {
                   <div className="bg-gray-700 rounded-md p-4 text-center text-gray-400">
                     {sessionsError ? 
                       <p className="text-red-300 text-sm">{sessionsError}</p> : 
-                      <p>No active sessions found. Be the first to create one!</p>
+                      <p>Vypadá to, že nejsou žádné aktivní místnosti. Vytvoř si vlastní!</p>
                     }
                   </div>
                 )}
@@ -262,7 +262,7 @@ const Home = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Refresh List
+                    Obnovit
                   </button>
                 </div>
               </div>
@@ -303,7 +303,7 @@ const Home = () => {
             {/* URL Display */}
             <div className="bg-gray-700 p-4 rounded-md mt-8">
               <div className="flex justify-between items-center mb-1">
-                <p className="text-sm text-gray-400">Share this URL:</p>
+                <p className="text-sm text-gray-400">Sdílej URL:</p>
                 <button 
                   onClick={copyToClipboard}
                   className="text-gray-400 hover:text-white text-sm flex items-center"
@@ -311,17 +311,22 @@ const Home = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                   </svg>
-                  {copySuccess ? 'Copied!' : 'Copy'}
+                  {copySuccess ? 'Zkopírováno!' : 'Zkopírovat'}
                 </button>
               </div>
-              <p className="text-green-400 font-mono text-sm break-all">{generatedUrl}</p>
+              <a 
+                href={generatedUrl}
+                className="text-green-400 font-mono text-sm break-all hover:text-green-300 transition-colors duration-200"
+              >
+                {generatedUrl}
+              </a>
             </div>
             
             <button
               onClick={() => handleJoinSession()}
               className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-md shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
             >
-              Join Session
+              Připojit se
             </button>
           </div>
         )}

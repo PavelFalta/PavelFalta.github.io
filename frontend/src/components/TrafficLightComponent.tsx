@@ -90,13 +90,13 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
 
       {/* Stats Display - Hidden on mobile (< 768px) */}
       <div className="hidden md:block bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md md:self-center">
-        <h3 className="text-xl font-semibold mb-4 text-center md:text-left">Traffic Statistics</h3>
+        <h3 className="text-xl font-semibold mb-4 text-center md:text-left">Studentský feedback</h3>
         
         <div className="space-y-4">
           {/* Red Light Stats */}
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-            <div className="text-sm text-gray-300 w-16">Red</div>
+            <div className="text-sm text-gray-300 w-16">Pomoc!</div>
             <div className="flex-1 bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-red-500 h-3 rounded-full" 
@@ -104,14 +104,14 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
               ></div>
             </div>
             <div className="ml-3 text-sm font-medium w-20 text-right">
-              {data.lights.red} users ({getPercentage(data.lights.red)})
+              {data.lights.red} studentů ({getPercentage(data.lights.red)})
             </div>
           </div>
           
           {/* Yellow Light Stats */}
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
-            <div className="text-sm text-gray-300 w-16">Yellow</div>
+            <div className="text-sm text-gray-300 w-16">Zpomal</div>
             <div className="flex-1 bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-yellow-400 h-3 rounded-full" 
@@ -119,14 +119,14 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
               ></div>
             </div>
             <div className="ml-3 text-sm font-medium w-20 text-right">
-              {data.lights.yellow} users ({getPercentage(data.lights.yellow)})
+              {data.lights.yellow} studentů ({getPercentage(data.lights.yellow)})
             </div>
           </div>
           
           {/* Green Light Stats */}
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-            <div className="text-sm text-gray-300 w-16">Green</div>
+            <div className="text-sm text-gray-300 w-16">Jedem!</div>
             <div className="flex-1 bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-green-500 h-3 rounded-full" 
@@ -134,14 +134,14 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
               ></div>
             </div>
             <div className="ml-3 text-sm font-medium w-20 text-right">
-              {data.lights.green} users ({getPercentage(data.lights.green)})
+              {data.lights.green} studentů ({getPercentage(data.lights.green)})
             </div>
           </div>
         </div>
         
         <div className="mt-4 pt-4 border-t border-gray-700">
           <p className="text-center md:text-left text-gray-400 text-sm">
-            Total users: <span className="font-medium text-white">{totalUsers}</span>
+            Celkem studentů: <span className="font-medium text-white">{totalUsers}</span>
           </p>
         </div>
       </div>
