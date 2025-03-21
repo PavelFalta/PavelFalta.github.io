@@ -166,34 +166,46 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     
     try:
         while True:
-            data = await websocket.receive_text()
             try:
-                message = json.loads(data)
-                if message.get("type") == "heartbeat":
-                    # Update session activity time and send acknowledgment
-                    update_session_activity(session_id)
-                    await websocket.send_text(json.dumps({
-                        "type": "heartbeat_ack",
-                        "timestamp": datetime.now().isoformat()
-                    }))
-                elif message.get("type") == "select_light" and "light" in message:
-                    new_light = message["light"]
-                    if new_light in ["red", "yellow", "green"] and new_light != user_light:
-                        # Only update counts if this connection has incremented a counter
-                        if hasattr(websocket, "has_incremented") and websocket.has_incremented:
-                            sessions[session_id]["lights"][user_light] -= 1
-                            sessions[session_id]["lights"][new_light] += 1
+                data = await websocket.receive_text()
+                try:
+                    message = json.loads(data)
+                    if message.get("type") == "heartbeat":
+                        # Update session activity time and send acknowledgment
+                        update_session_activity(session_id)
+                        try:
+                            await websocket.send_text(json.dumps({
+                                "type": "heartbeat_ack",
+                                "timestamp": datetime.now().isoformat()
+                            }))
+                        except Exception as e:
+                            # If we can't send the acknowledgment, the connection might be closed
+                            print(f"Failed to send heartbeat acknowledgment: {e}")
+                            break
+                    elif message.get("type") == "select_light" and "light" in message:
+                        new_light = message["light"]
+                        if new_light in ["red", "yellow", "green"] and new_light != user_light:
+                            # Only update counts if this connection has incremented a counter
+                            if hasattr(websocket, "has_incremented") and websocket.has_incremented:
+                                sessions[session_id]["lights"][user_light] -= 1
+                                sessions[session_id]["lights"][new_light] += 1
+                                
+                            # Update the user's current light selection
+                            user_light = new_light
+                            if hasattr(websocket, "current_light"):
+                                websocket.current_light = new_light
                             
-                        # Update the user's current light selection
-                        user_light = new_light
-                        if hasattr(websocket, "current_light"):
-                            websocket.current_light = new_light
-                        
-                        # Broadcast the update to all clients
-                        await broadcast_update(session_id)
-            except json.JSONDecodeError:
-                pass
-    except WebSocketDisconnect:
+                            # Broadcast the update to all clients
+                            await broadcast_update(session_id)
+                except json.JSONDecodeError:
+                    pass
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                print(f"Error handling WebSocket message: {e}")
+                break
+    finally:
+        # Cleanup code that runs whether there's an error or normal disconnect
         # Only update counts if this connection has incremented a counter
         if hasattr(websocket, "has_incremented") and websocket.has_incremented:
             current_light = getattr(websocket, "current_light", user_light)
@@ -209,8 +221,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             # Mark session as inactive for future cleanup
             inactive_sessions[session_id] = datetime.now()
         
-        # Broadcast the update to remaining clients
-        await broadcast_update(session_id)
+        try:
+            # Broadcast the update to remaining clients
+            await broadcast_update(session_id)
+        except Exception as e:
+            print(f"Error in final broadcast: {e}")
 
 async def broadcast_update(session_id: str):
     if session_id in connections:
@@ -219,12 +234,20 @@ async def broadcast_update(session_id: str):
             "data": sessions[session_id]
         })
         
+        # Create a list of connections to remove
+        to_remove = []
         
         for connection in connections[session_id]:
             try:
                 await connection.send_text(message)
-            except:
-                pass
+            except Exception as e:
+                print(f"Failed to send to a client, will remove connection: {e}")
+                to_remove.append(connection)
+        
+        # Remove dead connections
+        for connection in to_remove:
+            if connection in connections[session_id]:
+                connections[session_id].remove(connection)
 
 
 async def cleanup_inactive_sessions():
