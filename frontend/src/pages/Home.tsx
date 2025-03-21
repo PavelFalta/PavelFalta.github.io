@@ -186,7 +186,7 @@ const Home = () => {
       <div className="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-lg" ref={containerRef}>
         <h1 className="text-4xl font-bold text-center mb-8 text-green-400">Výukový Semafor</h1>
         <p className="text-gray-300 mb-8 text-center">
-          Vytvoř si místnost, nasdílej studentům, sleduj real-time feedback a přizpůsob rychlost výuky!.
+          Vytvoř, nasdílej a přizpůsob rychlost výuky zpětné vazbě!
         </p>
         
         {!generatedUrl ? (
@@ -202,7 +202,7 @@ const Home = () => {
             <div className="text-center">
               <div className="inline-flex items-center">
                 <span className="border-t border-gray-700 w-16"></span>
-                <span className="mx-4 text-gray-500 text-sm">or</span>
+                <span className="mx-4 text-gray-500 text-sm">nebo</span>
                 <span className="border-t border-gray-700 w-16"></span>
               </div>
             </div>
@@ -211,7 +211,7 @@ const Home = () => {
               onClick={toggleActiveSessions}
               className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-md transition"
             >
-              {showActiveSessions ? 'Skrýt Existující Místnosti' : 'Připojit se k Existující Místnosti'}
+              {showActiveSessions ? 'Skrýt Otevřené Místnosti' : 'Připojit se k Otevřené Místnosti'}
             </button>
             
             {/* Active Sessions Section */}
@@ -249,7 +249,7 @@ const Home = () => {
                   <div className="bg-gray-700 rounded-md p-4 text-center text-gray-400">
                     {sessionsError ? 
                       <p className="text-red-300 text-sm">{sessionsError}</p> : 
-                      <p>Vypadá to, že nejsou žádné aktivní místnosti. Vytvoř si vlastní!</p>
+                      <p>Vypadá to, že nejsou žádné otevřené místnosti. Vytvoř si vlastní!</p>
                     }
                   </div>
                 )}
