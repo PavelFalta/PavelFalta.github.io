@@ -51,9 +51,22 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   const [data, setData] = useState<TrafficLightData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const heartbeatIntervalRef = useRef<number | null>(null);
   
   // Store the actual WebSocket URL for debugging
   const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}`;
+
+  // Function to send heartbeat
+  const sendHeartbeat = useCallback(async () => {
+    if (isConnected) {
+      try {
+        const apiUrl = API_URL + '/heartbeat';
+        await fetch(apiUrl);
+      } catch (err) {
+        console.error('Heartbeat error:', err);
+      }
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     // Create a new WebSocket connection
@@ -66,6 +79,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       console.log('WebSocket connection established');
       setIsConnected(true);
       setError(null);
+      
+      // Start heartbeat interval when connection is established
+      heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 45000); // Send heartbeat every 45 seconds
     };
 
     ws.onmessage = (event) => {
@@ -95,13 +111,16 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       }
     };
 
-    // Clean up the WebSocket connection when the component unmounts
+    // Clean up the WebSocket connection and heartbeat interval when the component unmounts
     return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
     };
-  }, [sessionId, wsUrl]);
+  }, [sessionId, wsUrl, sendHeartbeat]);
 
   // Send a message over the WebSocket
   const sendMessage = useCallback((message: any) => {

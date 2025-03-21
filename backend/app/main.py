@@ -20,6 +20,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Track last activity time
+last_activity_time = datetime.now()
+
+def update_activity():
+    global last_activity_time
+    last_activity_time = datetime.now()
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost")
 frontend_urls = [
@@ -106,9 +112,16 @@ async def list_sessions():
     
     return {"sessions": sorted_sessions}
 
+@app.get("/heartbeat")
+async def heartbeat():
+    """Endpoint to keep the server alive when there are active WebSocket connections"""
+    update_activity()
+    return {"status": "alive", "last_activity": last_activity_time.isoformat()}
+
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
+    update_activity()  # Track WebSocket connection as activity
     
     if session_id not in sessions:
         await websocket.close(code=1000, reason="Session not found")
