@@ -10,7 +10,8 @@ export interface TrafficLightData {
 
 type WebSocketMessage = {
   type: string;
-  data: TrafficLightData;
+  data?: TrafficLightData;
+  timestamp?: string;
 };
 
 interface UseWebSocketReturn {
@@ -52,21 +53,26 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
+  const lastHeartbeatAckRef = useRef<number>(Date.now());
   
   // Store the actual WebSocket URL for debugging
   const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}`;
 
-  // Function to send heartbeat
-  const sendHeartbeat = useCallback(async () => {
-    if (isConnected) {
-      try {
-        const apiUrl = API_URL + '/heartbeat';
-        await fetch(apiUrl);
-      } catch (err) {
-        console.error('Heartbeat error:', err);
+  // Function to send heartbeat through WebSocket
+  const sendHeartbeat = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "heartbeat" }));
+      
+      // Check if we haven't received a heartbeat acknowledgment in 3 intervals
+      const now = Date.now();
+      if (now - lastHeartbeatAckRef.current > 180000) { // 3 minutes
+        console.warn('No heartbeat acknowledgment received for 3 minutes, reconnecting...');
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
       }
     }
-  }, [isConnected]);
+  }, []);
 
   useEffect(() => {
     // Create a new WebSocket connection
@@ -81,7 +87,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       setError(null);
       
       // Start heartbeat interval when connection is established
-      heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 45000); // Send heartbeat every 45 seconds
+      heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 60000); // Send heartbeat every minute
+      // Send initial heartbeat
+      sendHeartbeat();
     };
 
     ws.onmessage = (event) => {
@@ -90,6 +98,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
         
         if (message.type === 'update' && message.data) {
           setData(message.data);
+        } else if (message.type === 'heartbeat_ack') {
+          lastHeartbeatAckRef.current = Date.now();
+          console.debug('Heartbeat acknowledged:', message.timestamp);
         }
       } catch (err) {
         console.error('Error parsing WebSocket message:', err);
@@ -105,9 +116,23 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     ws.onclose = (event) => {
       console.log(`WebSocket connection closed with code: ${event.code}, reason: ${event.reason}`);
       setIsConnected(false);
+      
+      // Clear heartbeat interval
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      
       if (event.code !== 1000) {
         // Not a normal closure
         setError(`Connection closed unexpectedly. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`);
+        
+        // Attempt to reconnect after 5 seconds
+        setTimeout(() => {
+          console.log('Attempting to reconnect...');
+          const newWs = new WebSocket(wsUrl);
+          wsRef.current = newWs;
+        }, 5000);
       }
     };
 

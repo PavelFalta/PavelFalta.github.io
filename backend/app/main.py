@@ -20,12 +20,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Track last activity time
-last_activity_time = datetime.now()
+# Track last activity time per session
+session_activity: Dict[str, datetime] = {}
 
-def update_activity():
-    global last_activity_time
-    last_activity_time = datetime.now()
+def update_session_activity(session_id: str):
+    session_activity[session_id] = datetime.now()
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost")
 frontend_urls = [
@@ -115,13 +114,13 @@ async def list_sessions():
 @app.get("/heartbeat")
 async def heartbeat():
     """Endpoint to keep the server alive when there are active WebSocket connections"""
-    update_activity()
-    return {"status": "alive", "last_activity": last_activity_time.isoformat()}
+    update_session_activity(session_id)
+    return {"status": "alive", "last_activity": session_activity[session_id].isoformat()}
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
-    update_activity()  # Track WebSocket connection as activity
+    update_session_activity(session_id)
     
     if session_id not in sessions:
         await websocket.close(code=1000, reason="Session not found")
@@ -158,7 +157,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             data = await websocket.receive_text()
             try:
                 message = json.loads(data)
-                if message.get("type") == "select_light" and "light" in message:
+                if message.get("type") == "heartbeat":
+                    # Update session activity time and send acknowledgment
+                    update_session_activity(session_id)
+                    await websocket.send_text(json.dumps({
+                        "type": "heartbeat_ack",
+                        "timestamp": datetime.now().isoformat()
+                    }))
+                elif message.get("type") == "select_light" and "light" in message:
                     new_light = message["light"]
                     if new_light in ["red", "yellow", "green"] and new_light != user_light:
                         # Only update counts if this connection has incremented a counter
