@@ -113,9 +113,21 @@ async def list_sessions():
 
 @app.get("/heartbeat")
 async def heartbeat():
-    """Endpoint to keep the server alive when there are active WebSocket connections"""
-    update_session_activity(session_id)
-    return {"status": "alive", "last_activity": session_activity[session_id].isoformat()}
+    """Endpoint to keep the server alive"""
+    current_time = datetime.now()
+    # Check if there are any active sessions
+    active_sessions = []
+    for session_id, session_data in sessions.items():
+        if session_id not in inactive_sessions:
+            total_users = sum(session_data["lights"].values())
+            if total_users > 0:
+                active_sessions.append(session_id)
+    
+    return {
+        "status": "alive",
+        "timestamp": current_time.isoformat(),
+        "active_sessions": len(active_sessions)
+    }
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
