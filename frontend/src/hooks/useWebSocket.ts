@@ -11,7 +11,6 @@ export interface TrafficLightData {
 type WebSocketMessage = {
   type: string;
   data?: TrafficLightData;
-  timestamp?: string;
 };
 
 interface UseWebSocketReturn {
@@ -19,7 +18,7 @@ interface UseWebSocketReturn {
   data: TrafficLightData | null;
   error: string | null;
   sendMessage: (message: any) => void;
-  wsUrl: string; // Add the actual WebSocket URL for debugging
+  wsUrl: string;
 }
 
 // Get API URL from environment or use default
@@ -53,8 +52,6 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatIntervalRef = useRef<number | null>(null);
-  const httpHeartbeatIntervalRef = useRef<number | null>(null);
-  const lastHeartbeatAckRef = useRef<number>(Date.now());
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
@@ -69,50 +66,20 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
-    if (httpHeartbeatIntervalRef.current) {
-      clearInterval(httpHeartbeatIntervalRef.current);
-      httpHeartbeatIntervalRef.current = null;
-    }
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
   }, []);
 
-  // Function to send WebSocket heartbeat
-  const sendWsHeartbeat = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      try {
-        wsRef.current.send(JSON.stringify({ type: "heartbeat" }));
-        
-        // Check if we haven't received a heartbeat acknowledgment in 3 intervals
-        const now = Date.now();
-        if (now - lastHeartbeatAckRef.current > 180000) { // 3 minutes
-          console.warn('No heartbeat acknowledgment received for 3 minutes, reconnecting...');
-          if (wsRef.current) {
-            wsRef.current.close();
-          }
-        }
-      } catch (err) {
-        console.error('Failed to send WebSocket heartbeat:', err);
-      }
+  // Function to send HTTP heartbeat
+  const sendHeartbeat = useCallback(async () => {
+    try {
+      await fetch(`${API_URL}/heartbeat`);
+    } catch (err) {
+      console.error('Heartbeat error:', err);
     }
   }, []);
-
-  // Function to send HTTP heartbeat
-  const sendHttpHeartbeat = useCallback(async () => {
-    if (isConnected) {
-      try {
-        const response = await fetch(`${API_URL}/heartbeat`);
-        const data = await response.json();
-        console.debug('HTTP Heartbeat response:', data);
-        // Reset reconnect attempts on successful heartbeat
-        reconnectAttemptsRef.current = 0;
-      } catch (err) {
-        console.error('HTTP Heartbeat error:', err);
-      }
-    }
-  }, [isConnected]);
 
   // Function to establish WebSocket connection
   const connectWebSocket = useCallback(() => {
@@ -130,26 +97,13 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       setIsConnected(true);
       setError(null);
       reconnectAttemptsRef.current = 0;
-      
-      // Start heartbeat intervals
-      clearTimers();
-      heartbeatIntervalRef.current = window.setInterval(sendWsHeartbeat, 60000);
-      httpHeartbeatIntervalRef.current = window.setInterval(sendHttpHeartbeat, 30000);
-      
-      // Send initial heartbeats
-      sendWsHeartbeat();
-      sendHttpHeartbeat();
     };
 
     ws.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        
         if (message.type === 'update' && message.data) {
           setData(message.data);
-        } else if (message.type === 'heartbeat_ack') {
-          lastHeartbeatAckRef.current = Date.now();
-          console.debug('Heartbeat acknowledged:', message.timestamp);
         }
       } catch (err) {
         console.error('Error parsing WebSocket message:', err);
@@ -164,7 +118,6 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     ws.onclose = (event) => {
       console.log(`WebSocket connection closed with code: ${event.code}, reason: ${event.reason}`);
       setIsConnected(false);
-      clearTimers();
       
       if (event.code !== 1000) {
         // Not a normal closure, attempt to reconnect
@@ -181,8 +134,19 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
         }
       }
     };
-  }, [wsUrl, sendWsHeartbeat, sendHttpHeartbeat, clearTimers]);
+  }, [wsUrl]);
 
+  // Start HTTP heartbeat as soon as the hook is used
+  useEffect(() => {
+    // Start heartbeat immediately
+    sendHeartbeat();
+    // Set up interval for regular heartbeats (every 15 seconds)
+    heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 15000);
+    
+    return () => clearTimers();
+  }, [sendHeartbeat, clearTimers]);
+
+  // Handle WebSocket connection separately
   useEffect(() => {
     connectWebSocket();
     

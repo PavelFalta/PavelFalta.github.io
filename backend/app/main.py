@@ -113,26 +113,12 @@ async def list_sessions():
 
 @app.get("/heartbeat")
 async def heartbeat():
-    """Endpoint to keep the server alive"""
-    current_time = datetime.now()
-    # Check if there are any active sessions
-    active_sessions = []
-    for session_id, session_data in sessions.items():
-        if session_id not in inactive_sessions:
-            total_users = sum(session_data["lights"].values())
-            if total_users > 0:
-                active_sessions.append(session_id)
-    
-    return {
-        "status": "alive",
-        "timestamp": current_time.isoformat(),
-        "active_sessions": len(active_sessions)
-    }
+    """Simple endpoint to keep the server alive"""
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
-    update_session_activity(session_id)
     
     if session_id not in sessions:
         await websocket.close(code=1000, reason="Session not found")
@@ -170,19 +156,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 data = await websocket.receive_text()
                 try:
                     message = json.loads(data)
-                    if message.get("type") == "heartbeat":
-                        # Update session activity time and send acknowledgment
-                        update_session_activity(session_id)
-                        try:
-                            await websocket.send_text(json.dumps({
-                                "type": "heartbeat_ack",
-                                "timestamp": datetime.now().isoformat()
-                            }))
-                        except Exception as e:
-                            # If we can't send the acknowledgment, the connection might be closed
-                            print(f"Failed to send heartbeat acknowledgment: {e}")
-                            break
-                    elif message.get("type") == "select_light" and "light" in message:
+                    if message.get("type") == "select_light" and "light" in message:
                         new_light = message["light"]
                         if new_light in ["red", "yellow", "green"] and new_light != user_light:
                             # Only update counts if this connection has incremented a counter
