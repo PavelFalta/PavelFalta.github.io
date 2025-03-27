@@ -24,21 +24,6 @@ interface UseWebSocketReturn {
 // Get API URL from environment or use default
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Generate or retrieve a persistent client ID
-const getClientId = (): string => {
-  const clientIdKey = 'traffic_light_client_id';
-  let clientId = localStorage.getItem(clientIdKey);
-  
-  if (!clientId) {
-    // Generate a unique ID if not found
-    clientId = 'client_' + Math.random().toString(36).substring(2, 15) + 
-               Math.random().toString(36).substring(2, 15);
-    localStorage.setItem(clientIdKey, clientId);
-  }
-  
-  return clientId;
-};
-
 // Function to get appropriate WebSocket URL based on current environment
 const getWebSocketUrl = () => {
   // Check if we're running in development or production
@@ -69,13 +54,11 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   const heartbeatIntervalRef = useRef<number | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const connectionInProgressRef = useRef(false);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 5000; // 5 seconds
-  const clientId = useRef<string>(getClientId());
   
-  // Store the actual WebSocket URL for debugging (now with client ID)
-  const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}?client_id=${encodeURIComponent(clientId.current)}`;
+  // Store the actual WebSocket URL for debugging
+  const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}`;
 
   // Function to clear all intervals and timeouts
   const clearTimers = useCallback(() => {
@@ -86,22 +69,6 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
-    }
-  }, []);
-
-  // Ensure proper cleanup of existing connection
-  const closeExistingConnection = useCallback(() => {
-    if (!wsRef.current) return;
-    
-    try {
-      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
-        console.log('Closing existing WebSocket connection...');
-        // Use a clean close
-        wsRef.current.close(1000, 'Clean close by client');
-      }
-      wsRef.current = null;
-    } catch (err) {
-      console.error('Error closing WebSocket:', err);
     }
   }, []);
 
@@ -116,84 +83,58 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
 
   // Function to establish WebSocket connection
   const connectWebSocket = useCallback(() => {
-    // Prevent multiple simultaneous connection attempts
-    if (connectionInProgressRef.current) {
-      console.log('Connection already in progress, skipping');
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected');
       return;
     }
-    
-    // First, ensure any existing connection is properly closed
-    closeExistingConnection();
-    
-    connectionInProgressRef.current = true;
-    console.log(`Connecting to WebSocket at: ${wsUrl} with client ID: ${clientId.current}`);
-    
-    try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
 
-      ws.onopen = () => {
-        console.log('WebSocket connection established');
-        connectionInProgressRef.current = false;
-        setIsConnected(true);
-        setError(null);
-        reconnectAttemptsRef.current = 0;
-      };
+    console.log(`Connecting to WebSocket at: ${wsUrl}`);
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
 
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          if (message.type === 'update' && message.data) {
-            // Validate the message data to prevent invalid states
-            if (message.data.lights) {
-              // Ensure no negative light values
-              const safeData = {
-                lights: {
-                  red: Math.max(0, message.data.lights.red || 0),
-                  yellow: Math.max(0, message.data.lights.yellow || 0),
-                  green: Math.max(0, message.data.lights.green || 0)
-                }
-              };
-              setData(safeData);
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing WebSocket message:', err);
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+      setIsConnected(true);
+      setError(null);
+      reconnectAttemptsRef.current = 0;
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data);
+        if (message.type === 'update' && message.data) {
+          setData(message.data);
         }
-      };
+      } catch (err) {
+        console.error('Error parsing WebSocket message:', err);
+      }
+    };
 
-      ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        connectionInProgressRef.current = false;
-        setError(`Failed to connect to the server at ${wsUrl}. Please try again later.`);
-      };
+    ws.onerror = (event) => {
+      console.error('WebSocket error:', event);
+      setError(`Failed to connect to the server at ${wsUrl}. Please try again later.`);
+    };
 
-      ws.onclose = (event) => {
-        console.log(`WebSocket connection closed with code: ${event.code}, reason: ${event.reason}`);
-        connectionInProgressRef.current = false;
-        setIsConnected(false);
-        
-        if (event.code !== 1000) {
-          // Not a normal closure, attempt to reconnect
-          if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttemptsRef.current++;
-            const delay = RECONNECT_DELAY * reconnectAttemptsRef.current;
-            console.log(`Attempting to reconnect in ${delay/1000} seconds... (Attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
-            
-            reconnectTimeoutRef.current = window.setTimeout(() => {
-              connectWebSocket();
-            }, delay);
-          } else {
-            setError('Maximum reconnection attempts reached. Please refresh the page.');
-          }
+    ws.onclose = (event) => {
+      console.log(`WebSocket connection closed with code: ${event.code}, reason: ${event.reason}`);
+      setIsConnected(false);
+      
+      if (event.code !== 1000) {
+        // Not a normal closure, attempt to reconnect
+        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttemptsRef.current++;
+          const delay = RECONNECT_DELAY * reconnectAttemptsRef.current;
+          console.log(`Attempting to reconnect in ${delay/1000} seconds... (Attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
+          
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            connectWebSocket();
+          }, delay);
+        } else {
+          setError('Maximum reconnection attempts reached. Please refresh the page.');
         }
-      };
-    } catch (err) {
-      console.error('Error creating WebSocket connection:', err);
-      connectionInProgressRef.current = false;
-      setError(`Failed to create WebSocket connection: ${err}`);
-    }
-  }, [wsUrl, closeExistingConnection]);
+      }
+    };
+  }, [wsUrl]);
 
   // Start HTTP heartbeat as soon as the hook is used
   useEffect(() => {
@@ -210,11 +151,12 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     connectWebSocket();
     
     return () => {
-      console.log("Cleaning up WebSocket connection");
       clearTimers();
-      closeExistingConnection();
+      if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+        wsRef.current.close();
+      }
     };
-  }, [sessionId, connectWebSocket, clearTimers, closeExistingConnection]);
+  }, [sessionId, connectWebSocket, clearTimers]);
 
   // Send a message over the WebSocket
   const sendMessage = useCallback((message: any) => {
