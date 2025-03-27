@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import useWebSocket from '../hooks/useWebSocket';
 import TrafficLightComponent from '../components/TrafficLightComponent';
 
@@ -9,12 +9,13 @@ const TrafficLight = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [activeLight, setActiveLight] = useState<Light>('green'); // Default to green
   const [copySuccess, setCopySuccess] = useState(false);
+  const navigate = useNavigate();
   
   // Ensure sessionId is defined
   const safeSessionId = sessionId || '';
   
   // Connect to WebSocket
-  const { isConnected, data, error, sendMessage } = useWebSocket(safeSessionId);
+  const { isConnected, data, error, sendMessage, closeConnection } = useWebSocket(safeSessionId);
 
   // Handle traffic light selection
   const handleLightSelect = (light: Light) => {
@@ -46,6 +47,14 @@ const TrafficLight = () => {
       });
   };
 
+  // Handle navigation back to home
+  const handleNavigateHome = useCallback(() => {
+    // First close the connection
+    closeConnection();
+    // Then navigate
+    navigate('/');
+  }, [closeConnection, navigate]);
+
   if (!sessionId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh]">
@@ -63,12 +72,15 @@ const TrafficLight = () => {
   return (
     <div className="flex flex-col items-center min-h-[80vh] max-w-full overflow-x-hidden">
       <div className="mb-6 w-full max-w-6xl flex justify-between items-center px-4">
-        <Link to="/" className="inline-flex items-center text-gray-400 hover:text-white">
+        <button 
+          onClick={handleNavigateHome}
+          className="inline-flex items-center text-gray-400 hover:text-white"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
           Zpět
-        </Link>
+        </button>
         
         <button 
           onClick={handleCopyUrl} 

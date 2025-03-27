@@ -18,6 +18,7 @@ interface UseWebSocketReturn {
   data: TrafficLightData | null;
   error: string | null;
   sendMessage: (message: any) => void;
+  closeConnection: () => void;
   wsUrl: string;
 }
 
@@ -71,6 +72,39 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       reconnectTimeoutRef.current = null;
     }
   }, []);
+
+  // Function to close the WebSocket connection with a normal closure code
+  const closeConnection = useCallback(() => {
+    console.log('Explicitly closing WebSocket connection');
+    
+    // Clear all timers first
+    clearTimers();
+    
+    // Then close the WebSocket with a normal closure code
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'User navigated away');
+      } else if (wsRef.current.readyState === WebSocket.CONNECTING) {
+        // If still connecting, we need to set an onopen handler to close immediately once connected
+        const originalOnOpen = wsRef.current.onopen;
+        wsRef.current.onopen = (event) => {
+          // Call the original onopen if it exists
+          if (originalOnOpen) {
+            (originalOnOpen as EventListener).call(wsRef.current as WebSocket, event);
+          }
+          // Then close the connection
+          if (wsRef.current) {
+            wsRef.current.close(1000, 'User navigated away');
+          }
+        };
+      }
+      // Set to null to prevent further usage
+      wsRef.current = null;
+    }
+    
+    // Update state
+    setIsConnected(false);
+  }, [clearTimers]);
 
   // Function to send HTTP heartbeat
   const sendHeartbeat = useCallback(async () => {
@@ -150,13 +184,34 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   useEffect(() => {
     connectWebSocket();
     
-    return () => {
-      clearTimers();
-      if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-        wsRef.current.close();
+    // Add page visibility and beforeunload handlers to manage connection
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // User is navigating away or minimizing the browser
+        closeConnection();
+      } else if (document.visibilityState === 'visible' && !isConnected) {
+        // User is coming back to the page
+        connectWebSocket();
       }
     };
-  }, [sessionId, connectWebSocket, clearTimers]);
+    
+    const handleBeforeUnload = () => {
+      // User is closing the page/tab or refreshing
+      closeConnection();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      // Clean up event listeners
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Close WebSocket connection
+      closeConnection();
+    };
+  }, [sessionId, connectWebSocket, closeConnection, isConnected]);
 
   // Send a message over the WebSocket
   const sendMessage = useCallback((message: any) => {
@@ -172,7 +227,7 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     }
   }, []);
 
-  return { isConnected, data, error, sendMessage, wsUrl };
+  return { isConnected, data, error, sendMessage, closeConnection, wsUrl };
 };
 
 export default useWebSocket; 
