@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
 import random
@@ -22,6 +22,9 @@ app = FastAPI(
 
 # Track last activity time per session
 session_activity: Dict[str, datetime] = {}
+
+# Track client IDs per session to prevent duplicates
+session_clients: Dict[str, Dict[str, WebSocket]] = {}
 
 def update_session_activity(session_id: str):
     session_activity[session_id] = datetime.now()
@@ -117,12 +120,47 @@ async def heartbeat():
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 @app.websocket("/ws/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket, 
+    session_id: str, 
+    client_id: str = Query(None)
+):
     await websocket.accept()
     
     if session_id not in sessions:
         await websocket.close(code=1000, reason="Session not found")
         return
+    
+    # Check if client_id was provided
+    if not client_id:
+        await websocket.close(code=1000, reason="Client ID is required")
+        return
+
+    # Initialize client tracking for this session if it doesn't exist
+    if session_id not in session_clients:
+        session_clients[session_id] = {}
+    
+    # Check if this client already has a connection in this session
+    previous_connection = session_clients[session_id].get(client_id)
+    if previous_connection:
+        try:
+            # Try to close the previous connection
+            await previous_connection.close(code=1000, reason="New connection from same client")
+            print(f"Closed previous connection for client {client_id} in session {session_id}")
+            
+            # Find and remove the previous connection from connections list
+            if session_id in connections and previous_connection in connections[session_id]:
+                connections[session_id].remove(previous_connection)
+                
+                # If this connection had incremented a counter, decrement it
+                if hasattr(previous_connection, "has_incremented") and previous_connection.has_incremented:
+                    current_light = getattr(previous_connection, "current_light", "green")
+                    sessions[session_id]["lights"][current_light] -= 1
+        except Exception as e:
+            print(f"Error closing previous connection: {e}")
+    
+    # Store this client's connection
+    session_clients[session_id][client_id] = websocket
     
     # Add or initialize connection list for this session
     if session_id not in connections:
@@ -139,13 +177,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     # We'll only increment once we're sure this is a unique connection
     user_light = "green"
     
-    # Check if this is a unique connection before incrementing
-    if len(connections[session_id]) == 1 or all(conn != websocket for conn in connections[session_id][:-1]):
-        # This is a new unique connection, so increment the counter
-        sessions[session_id]["lights"][user_light] += 1
-        # Track that this connection has incremented a counter
-        setattr(websocket, "has_incremented", True)
-        setattr(websocket, "current_light", user_light)
+    # This is a new unique connection from this client, so increment the counter
+    sessions[session_id]["lights"][user_light] += 1
+    # Track that this connection has incremented a counter
+    setattr(websocket, "has_incremented", True)
+    setattr(websocket, "current_light", user_light)
+    setattr(websocket, "client_id", client_id)
     
     # Broadcast the update to all clients
     await broadcast_update(session_id)
@@ -180,6 +217,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 break
     finally:
         # Cleanup code that runs whether there's an error or normal disconnect
+        
         # Only update counts if this connection has incremented a counter
         if hasattr(websocket, "has_incremented") and websocket.has_incremented:
             current_light = getattr(websocket, "current_light", user_light)
@@ -188,6 +226,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         # Remove this websocket from the connections list
         if websocket in connections[session_id]:
             connections[session_id].remove(websocket)
+        
+        # Remove from client tracking if this is still the active connection for this client
+        client_id = getattr(websocket, "client_id", None)
+        if client_id and session_id in session_clients and session_clients[session_id].get(client_id) == websocket:
+            del session_clients[session_id][client_id]
         
         # Check if session is now empty
         total_users = sum(sessions[session_id]["lights"].values())

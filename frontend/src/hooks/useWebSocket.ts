@@ -24,6 +24,21 @@ interface UseWebSocketReturn {
 // Get API URL from environment or use default
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Generate or retrieve a persistent client ID
+const getClientId = (): string => {
+  const clientIdKey = 'traffic_light_client_id';
+  let clientId = localStorage.getItem(clientIdKey);
+  
+  if (!clientId) {
+    // Generate a unique ID if not found
+    clientId = 'client_' + Math.random().toString(36).substring(2, 15) + 
+               Math.random().toString(36).substring(2, 15);
+    localStorage.setItem(clientIdKey, clientId);
+  }
+  
+  return clientId;
+};
+
 // Function to get appropriate WebSocket URL based on current environment
 const getWebSocketUrl = () => {
   // Check if we're running in development or production
@@ -56,9 +71,10 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   const reconnectAttemptsRef = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 5000; // 5 seconds
+  const clientId = useRef<string>(getClientId());
   
-  // Store the actual WebSocket URL for debugging
-  const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}`;
+  // Store the actual WebSocket URL for debugging (now with client ID)
+  const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}?client_id=${clientId.current}`;
 
   // Function to clear all intervals and timeouts
   const clearTimers = useCallback(() => {
@@ -88,7 +104,7 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       return;
     }
 
-    console.log(`Connecting to WebSocket at: ${wsUrl}`);
+    console.log(`Connecting to WebSocket at: ${wsUrl} with client ID: ${clientId.current}`);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
