@@ -111,7 +111,7 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
           {/* Yellow Light Stats */}
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
-            <div className="text-sm text-gray-300 w-16">Zpomal</div>
+            <div className="text-sm text-gray-300 w-16">Zpomal!</div>
             <div className="flex-1 bg-gray-700 rounded-full h-3">
               <div 
                 className="bg-yellow-400 h-3 rounded-full" 
