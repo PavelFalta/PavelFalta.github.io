@@ -31,7 +31,7 @@ const Home = () => {
   useEffect(() => {
     const calculateMaxScale = () => {
       if (containerRef.current && qrCodeRef.current) {
-        // We only need the QR code 
+        // We only need the QR code width for the calculation
         const qrWidth = qrCodeRef.current.clientWidth;
         
         // Determine max scale (leaving some margin)
