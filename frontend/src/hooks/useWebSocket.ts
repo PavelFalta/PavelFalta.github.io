@@ -60,6 +60,14 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
   // Store the actual WebSocket URL for debugging
   const wsUrl = `${getWebSocketUrl()}/ws/${sessionId}`;
 
+  // Function to close WebSocket connection
+  const closeWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
+      wsRef.current.close(1000, 'Normal closure');
+      wsRef.current = null;
+    }
+  }, []);
+
   // Function to clear all intervals and timeouts
   const clearTimers = useCallback(() => {
     if (heartbeatIntervalRef.current) {
@@ -71,6 +79,52 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       reconnectTimeoutRef.current = null;
     }
   }, []);
+
+  // Function to clean up everything
+  const cleanup = useCallback(() => {
+    closeWebSocket();
+    clearTimers();
+  }, [closeWebSocket, clearTimers]);
+
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cleanup();
+      } else {
+        connectWebSocket();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [cleanup]);
+
+  // Handle beforeunload event
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      cleanup();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [cleanup]);
+
+  // Handle navigation events using the History API
+  useEffect(() => {
+    const handleNavigation = () => {
+      cleanup();
+    };
+
+    window.addEventListener('popstate', handleNavigation);
+    return () => {
+      window.removeEventListener('popstate', handleNavigation);
+    };
+  }, [cleanup]);
 
   // Function to send HTTP heartbeat
   const sendHeartbeat = useCallback(async () => {
@@ -87,6 +141,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       console.log('WebSocket already connected');
       return;
     }
+
+    // Close any existing connection first
+    closeWebSocket();
 
     console.log(`Connecting to WebSocket at: ${wsUrl}`);
     const ws = new WebSocket(wsUrl);
@@ -118,6 +175,7 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     ws.onclose = (event) => {
       console.log(`WebSocket connection closed with code: ${event.code}, reason: ${event.reason}`);
       setIsConnected(false);
+      wsRef.current = null;
       
       if (event.code !== 1000) {
         // Not a normal closure, attempt to reconnect
@@ -134,29 +192,20 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
         }
       }
     };
-  }, [wsUrl]);
+  }, [wsUrl, closeWebSocket]);
 
   // Start HTTP heartbeat as soon as the hook is used
   useEffect(() => {
-    // Start heartbeat immediately
     sendHeartbeat();
-    // Set up interval for regular heartbeats (every 15 seconds)
     heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 15000);
-    
     return () => clearTimers();
   }, [sendHeartbeat, clearTimers]);
 
-  // Handle WebSocket connection separately
+  // Handle WebSocket connection
   useEffect(() => {
     connectWebSocket();
-    
-    return () => {
-      clearTimers();
-      if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-        wsRef.current.close();
-      }
-    };
-  }, [sessionId, connectWebSocket, clearTimers]);
+    return () => cleanup();
+  }, [sessionId, connectWebSocket, cleanup]);
 
   // Send a message over the WebSocket
   const sendMessage = useCallback((message: any) => {
