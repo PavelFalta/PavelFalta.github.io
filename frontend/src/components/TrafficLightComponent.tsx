@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TrafficLightData } from '../hooks/useWebSocket';
 import QRCode from 'react-qr-code';
 
@@ -16,8 +16,8 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
   sessionId
 }) => {
   const [showQR, setShowQR] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   // Calculate total users to show percentages
   const totalUsers = data.lights.red + data.lights.yellow + data.lights.green;
@@ -35,15 +35,22 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
   };
 
   const handleQRClick = () => {
-    if (!isExpanded) {
-      setIsExpanded(true);
-    } else {
-      const url = getShareableUrl();
-      navigator.clipboard.writeText(url).then(() => {
-        alert('URL zkopírována do schránky!');
-      });
-    }
+    setIsExpanded(!isExpanded);
   };
+
+  // Close QR code when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (qrRef.current && !qrRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-6xl mx-auto px-4">
@@ -200,11 +207,10 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
                 </button>
               </div>
               <div 
+                ref={qrRef}
                 className={`relative cursor-pointer transition-all duration-300 ${
-                  isHovered ? 'scale-105' : ''
-                } ${isExpanded ? 'scale-150' : ''}`}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
+                  isExpanded ? 'scale-[2.5] z-50' : 'hover:scale-105'
+                }`}
                 onClick={handleQRClick}
               >
                 <div className="bg-white p-8 rounded-lg">
@@ -215,16 +221,6 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
                     viewBox={`0 0 256 256`}
                   />
                 </div>
-                {isHovered && !isExpanded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                    <span className="text-white font-medium">Klikni pro zvětšení</span>
-                  </div>
-                )}
-                {isExpanded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                    <span className="text-white font-medium">Klikni pro zkopírování URL</span>
-                  </div>
-                )}
               </div>
             </div>
           )}
