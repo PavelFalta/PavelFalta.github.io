@@ -23,9 +23,6 @@ app = FastAPI(
 # Track last activity time per session
 session_activity: Dict[str, datetime] = {}
 
-# Track IP addresses and their WebSocket connections
-ip_connections: Dict[str, WebSocket] = {}
-
 def update_session_activity(session_id: str):
     session_activity[session_id] = datetime.now()
 
@@ -121,15 +118,6 @@ async def heartbeat():
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    # Get client IP address
-    client_ip = websocket.client.host
-    
-    # Check if this IP already has an active connection
-    if client_ip in ip_connections:
-        # Close the new connection attempt
-        await websocket.close(code=1008, reason="Only one connection per IP address is allowed")
-        return
-        
     await websocket.accept()
     
     if session_id not in sessions:
@@ -142,7 +130,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     
     # Store this websocket connection
     connections[session_id].append(websocket)
-    ip_connections[client_ip] = websocket
     
     # Remove from inactive sessions if it was marked as inactive
     if session_id in inactive_sessions:
@@ -193,10 +180,6 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 break
     finally:
         # Cleanup code that runs whether there's an error or normal disconnect
-        # Remove IP from tracking
-        if client_ip in ip_connections:
-            del ip_connections[client_ip]
-            
         # Only update counts if this connection has incremented a counter
         if hasattr(websocket, "has_incremented") and websocket.has_incremented:
             current_light = getattr(websocket, "current_light", user_light)
