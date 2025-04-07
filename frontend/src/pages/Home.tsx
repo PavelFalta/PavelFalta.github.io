@@ -177,7 +177,7 @@ const Home = () => {
   // Get the current scale based on expanded/hovered state
   const getQrCodeScale = () => {
     if (isQrExpanded) return maxScale;
-    if (isQrHovered) return maxScale;
+    if (isQrHovered) return 1.1;
     return 1;
   };
 
