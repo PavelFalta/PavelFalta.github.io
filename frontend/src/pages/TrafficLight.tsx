@@ -91,33 +91,16 @@ const TrafficLight = () => {
           Zpět
         </Link>
         
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyUrl}
-            className="inline-flex items-center text-gray-400 hover:text-white"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-            </svg>
-            {copySuccess ? 'Zkopírováno!' : 'Zkopírovat'}
-          </button>
-          <button
-            onClick={toggleQR}
-            className={`inline-flex items-center ${showQR ? 'text-green-400 hover:text-green-300' : 'text-gray-400 hover:text-white'}`}
-            title={showQR ? 'Zobrazit feedback' : 'Zobrazit QR kód'}
-          >
-            {showQR ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm8-12a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={handleCopyUrl}
+          className="inline-flex items-center text-gray-400 hover:text-white"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+          </svg>
+          {copySuccess ? 'Zkopírováno!' : 'Zkopírovat'}
+        </button>
       </div>
 
       <h1 className="text-3xl font-bold mb-2 text-center text-white">Výukový Semafor</h1>
@@ -149,20 +132,38 @@ const TrafficLight = () => {
       )}
       
       <div className="mt-8 text-center text-gray-500 text-sm px-4">
-        {showQR ? (
-          <div className="bg-white p-4 rounded-lg inline-block">
-            <QRCode
-              value={getShareableUrl()}
-              size={150}
-              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-              viewBox={`0 0 256 256`}
-            />
-          </div>
-        ) : (
-          <p>
-            Klik na blik a dej vyučujícímu feedback tento okamžik! <br />
-          </p>
-        )}
+        <div className="relative">
+          {showQR ? (
+            <div className="bg-white p-8 rounded-lg inline-block">
+              <QRCode
+                value={getShareableUrl()}
+                size={200}
+                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                viewBox={`0 0 256 256`}
+              />
+            </div>
+          ) : (
+            <p>
+              Klik na blik a dej vyučujícímu feedback tento okamžik! <br />
+            </p>
+          )}
+          
+          <button
+            onClick={toggleQR}
+            className={`absolute top-0 right-0 inline-flex items-center ${showQR ? 'text-green-400 hover:text-green-300' : 'text-gray-400 hover:text-white'}`}
+            title={showQR ? 'Zobrazit feedback' : 'Zobrazit QR kód'}
+          >
+            {showQR ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm8-12a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
         
         {/* Session ID - Shown at bottom on mobile*/}
         <p className="mt-4 text-gray-400 md:hidden block">
