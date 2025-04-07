@@ -16,6 +16,7 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
   sessionId
 }) => {
   const [showQR, setShowQR] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Calculate total users to show percentages
   const totalUsers = data.lights.red + data.lights.yellow + data.lights.green;
@@ -30,6 +31,13 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
     const baseUrl = window.location.origin + '/traffic-light';
     const hashPath = `/#/${sessionId}`;
     return baseUrl + hashPath;
+  };
+
+  const handleQRClick = () => {
+    const url = getShareableUrl();
+    navigator.clipboard.writeText(url).then(() => {
+      alert('URL zkopírována do schránky!');
+    });
   };
 
   return (
@@ -101,90 +109,112 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
 
       {/* Stats Display - Hidden on mobile (< 768px) */}
       <div className="hidden md:block bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md md:self-center relative">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-semibold text-center md:text-left">Studentský feedback</h3>
-          <button
-            onClick={() => setShowQR(!showQR)}
-            className={`inline-flex items-center ${showQR ? 'text-green-400 hover:text-green-300' : 'text-gray-400 hover:text-white'}`}
-            title={showQR ? 'Zobrazit feedback' : 'Zobrazit QR kód'}
-          >
-            {showQR ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm8-12a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
-        </div>
-        
-        {showQR ? (
-          <div className="flex justify-center items-center h-[200px]">
-            <div className="bg-white p-8 rounded-lg">
-              <QRCode
-                value={getShareableUrl()}
-                size={200}
-                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                viewBox={`0 0 256 256`}
-              />
+        {!showQR && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-center md:text-left">Studentský feedback</h3>
+              <button
+                onClick={() => setShowQR(!showQR)}
+                className={`inline-flex items-center ${showQR ? 'text-green-400 hover:text-green-300' : 'text-gray-400 hover:text-white'}`}
+                title={showQR ? 'Zobrazit feedback' : 'Zobrazit QR kód'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2H4a1 1 0 01-1-1zm8-12a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1zm0 6a1 1 0 011-1h4a1 1 0 010 2h-4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Red Light Stats */}
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-              <div className="text-sm text-gray-300 w-16">Pomoc!</div>
-              <div className="flex-1 bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-red-500 h-3 rounded-full" 
-                  style={{ width: getPercentage(data.lights.red) }}
-                ></div>
+            
+            <div className="space-y-4">
+              {/* Red Light Stats */}
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                <div className="text-sm text-gray-300 w-16">Pomoc!</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-3">
+                  <div 
+                    className="bg-red-500 h-3 rounded-full" 
+                    style={{ width: getPercentage(data.lights.red) }}
+                  ></div>
+                </div>
+                <div className="ml-3 text-sm font-medium w-20 text-right">
+                  {data.lights.red} studentů ({getPercentage(data.lights.red)})
+                </div>
               </div>
-              <div className="ml-3 text-sm font-medium w-20 text-right">
-                {data.lights.red} studentů ({getPercentage(data.lights.red)})
+              
+              {/* Yellow Light Stats */}
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
+                <div className="text-sm text-gray-300 w-16">Zpomal</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-3">
+                  <div 
+                    className="bg-yellow-400 h-3 rounded-full" 
+                    style={{ width: getPercentage(data.lights.yellow) }}
+                  ></div>
+                </div>
+                <div className="ml-3 text-sm font-medium w-20 text-right">
+                  {data.lights.yellow} studentů ({getPercentage(data.lights.yellow)})
+                </div>
+              </div>
+              
+              {/* Green Light Stats */}
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <div className="text-sm text-gray-300 w-16">Jedem!</div>
+                <div className="flex-1 bg-gray-700 rounded-full h-3">
+                  <div 
+                    className="bg-green-500 h-3 rounded-full" 
+                    style={{ width: getPercentage(data.lights.green) }}
+                  ></div>
+                </div>
+                <div className="ml-3 text-sm font-medium w-20 text-right">
+                  {data.lights.green} studentů ({getPercentage(data.lights.green)})
+                </div>
               </div>
             </div>
             
-            {/* Yellow Light Stats */}
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
-              <div className="text-sm text-gray-300 w-16">Zpomal</div>
-              <div className="flex-1 bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-yellow-400 h-3 rounded-full" 
-                  style={{ width: getPercentage(data.lights.yellow) }}
-                ></div>
-              </div>
-              <div className="ml-3 text-sm font-medium w-20 text-right">
-                {data.lights.yellow} studentů ({getPercentage(data.lights.yellow)})
-              </div>
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <p className="text-center md:text-left text-gray-400 text-sm">
+                Celkem studentů: <span className="font-medium text-white">{totalUsers}</span>
+              </p>
             </div>
-            
-            {/* Green Light Stats */}
-            <div className="flex items-center">
-              <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-              <div className="text-sm text-gray-300 w-16">Jedem!</div>
-              <div className="flex-1 bg-gray-700 rounded-full h-3">
-                <div 
-                  className="bg-green-500 h-3 rounded-full" 
-                  style={{ width: getPercentage(data.lights.green) }}
-                ></div>
+          </>
+        )}
+
+        {showQR && (
+          <div className="flex flex-col items-center">
+            <div className="flex justify-between items-center w-full mb-4">
+              <h3 className="text-xl font-semibold text-center md:text-left">Studentský feedback</h3>
+              <button
+                onClick={() => setShowQR(!showQR)}
+                className="inline-flex items-center text-green-400 hover:text-green-300"
+                title="Zobrazit feedback"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div 
+              className="relative cursor-pointer transition-transform duration-300 hover:scale-105"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              onClick={handleQRClick}
+            >
+              <div className="bg-white p-8 rounded-lg">
+                <QRCode
+                  value={getShareableUrl()}
+                  size={200}
+                  style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                  viewBox={`0 0 256 256`}
+                />
               </div>
-              <div className="ml-3 text-sm font-medium w-20 text-right">
-                {data.lights.green} studentů ({getPercentage(data.lights.green)})
-              </div>
+              {isHovered && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                  <span className="text-white font-medium">Klikni pro zkopírování URL</span>
+                </div>
+              )}
             </div>
           </div>
         )}
-        
-        <div className="mt-4 pt-4 border-t border-gray-700">
-          <p className="text-center md:text-left text-gray-400 text-sm">
-            Celkem studentů: <span className="font-medium text-white">{totalUsers}</span>
-          </p>
-        </div>
       </div>
 
       <div className="text-center text-gray-500 text-sm px-4">
