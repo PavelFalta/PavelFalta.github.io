@@ -209,7 +209,7 @@ const TrafficLightComponent: React.FC<TrafficLightComponentProps> = ({
               <div 
                 ref={qrRef}
                 className={`relative cursor-pointer transition-all duration-300 ${
-                  isExpanded ? 'scale-[2.5] z-50' : 'hover:scale-105'
+                  isExpanded ? 'scale-[2] z-50' : 'hover:scale-105'
                 }`}
                 onClick={handleQRClick}
               >
