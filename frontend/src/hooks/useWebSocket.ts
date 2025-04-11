@@ -95,7 +95,7 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     }
   }, []);
 
-  // Handle page visibility changes - keep heartbeat running
+  // Handle page visibility changes - keep both WebSocket and heartbeat alive
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -176,8 +176,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       setIsConnected(false);
       wsRef.current = null;
       
-      if (event.code !== 1000) {
-        // Not a normal closure, attempt to reconnect
+      // Only attempt to reconnect if the closure wasn't intentional (not code 1000)
+      // and if we're not in a hidden state (tab switched or screen locked)
+      if (event.code !== 1000 && !document.hidden) {
         if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current++;
           const delay = RECONNECT_DELAY * reconnectAttemptsRef.current;
