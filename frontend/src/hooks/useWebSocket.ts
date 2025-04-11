@@ -86,13 +86,21 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     clearTimers();
   }, [closeWebSocket, clearTimers]);
 
-  // Handle page visibility changes
+  // Function to send HTTP heartbeat
+  const sendHeartbeat = useCallback(async () => {
+    try {
+      await fetch(`${API_URL}/heartbeat`);
+    } catch (err) {
+      console.error('Heartbeat error:', err);
+    }
+  }, []);
+
+  // Handle page visibility changes - keep heartbeat running
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        cleanup();
-      } else {
-        connectWebSocket();
+      if (!document.hidden) {
+        // Just send an immediate heartbeat when tab becomes visible
+        sendHeartbeat();
       }
     };
 
@@ -100,9 +108,9 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [cleanup]);
+  }, [sendHeartbeat]);
 
-  // Handle beforeunload event
+  // Handle beforeunload event - close when leaving the site
   useEffect(() => {
     const handleBeforeUnload = () => {
       cleanup();
@@ -114,7 +122,7 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
     };
   }, [cleanup]);
 
-  // Handle navigation events using the History API
+  // Handle navigation events using the History API - close when navigating away
   useEffect(() => {
     const handleNavigation = () => {
       cleanup();
@@ -125,15 +133,6 @@ const useWebSocket = (sessionId: string): UseWebSocketReturn => {
       window.removeEventListener('popstate', handleNavigation);
     };
   }, [cleanup]);
-
-  // Function to send HTTP heartbeat
-  const sendHeartbeat = useCallback(async () => {
-    try {
-      await fetch(`${API_URL}/heartbeat`);
-    } catch (err) {
-      console.error('Heartbeat error:', err);
-    }
-  }, []);
 
   // Function to establish WebSocket connection
   const connectWebSocket = useCallback(() => {
