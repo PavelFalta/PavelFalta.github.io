@@ -29,18 +29,18 @@ def update_session_activity(session_id: str):
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost")
 frontend_urls = [
     frontend_url,
-    "http://localhost:5173",  
-    "http://localhost",        
-    "https://pavelfalta.github.io"  
+    "http://localhost:5173",  # Vite dev server
+    "http://localhost",        # General localhost
+    "https://pavelfalta.github.io"  # Your deployed frontend
 ]
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now - you can restrict this in production
+    allow_origins=frontend_urls, # Use the explicit list of allowed origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # Allow all standard methods
+    allow_headers=["*"], # Allow all standard headers
 )
 
 
