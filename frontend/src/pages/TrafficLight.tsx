@@ -69,7 +69,7 @@ const TrafficLight = () => {
   }
 
   return (
-    <div className="flex flex-col items-center min-h-[80vh] max-w-full overflow-x-hidden">
+    <div className="flex flex-col items-center w-full max-w-full overflow-x-hidden py-4">
       <div className="mb-6 w-full max-w-6xl flex justify-between items-center px-4">
         <Link to="/" className="inline-flex items-center text-gray-400 hover:text-white">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
