@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@layer base {
+  /* Ensure dark background extends to all scrollable areas */
+  html, body, #root {
+    @apply h-full m-0 p-0 bg-gray-800 text-gray-300;
+  }
+
+  /* For iOS devices that might need extra help */
+  body {
+    @apply relative overflow-x-hidden overflow-y-auto;
+  }
+
+  /* Ensure the root element fills at least the entire viewport */
+  #root {
+    @apply min-h-screen flex flex-col;
+  }
+}
+
+@layer utilities {
+  /* Optional: Modern scrollbar styling (WebKit browsers) */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded border-2 border-solid border-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
