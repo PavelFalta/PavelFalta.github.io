@@ -27,6 +27,10 @@ const subProjects = [
     path: 'hdf5visualizer-frontend', // Path to the hdf5visualizer source
     name: 'hdf5visualizer', // Will be deployed to /docs/hdf5visualizer/
   },
+  {
+    path: 'physiosim-frontend',
+    name: 'physiosim',
+  }
   // {
   //   path: 'path/to/another-app',
   //   name: 'another-app-name',

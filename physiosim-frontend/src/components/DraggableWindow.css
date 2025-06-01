@@ -1,0 +1,228 @@
+.draggable-window {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  transition: height 0.3s ease;
+  resize: both;
+  min-width: 450px;
+  min-height: 380px;
+  max-height: 380px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transform: translateZ(0); /* Hardware acceleration */
+}
+
+.draggable-window.collapsed {
+  height: 60px !important;
+  min-height: auto;
+  resize: none;
+}
+
+.window-title-bar {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  cursor: move;
+  user-select: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  height: 60px;
+  touch-action: none; /* Prevent scrolling when dragging */
+}
+
+.window-icon {
+  margin-right: 12px;
+  font-size: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.window-title {
+  flex-grow: 1;
+  font-weight: 700;
+  font-size: 18px;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+}
+
+.window-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.window-button {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 18px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+  backdrop-filter: blur(10px);
+}
+
+.window-button:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(148, 163, 184, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.window-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.window-button:last-child:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.window-content {
+  padding: 0;
+  height: calc(100% - 60px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.draggable-window.collapsed .window-content {
+  display: none;
+}
+
+/* Touch-friendly resize handle */
+.draggable-window::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(-45deg, transparent 30%, rgba(148, 163, 184, 0.5) 30%, rgba(148, 163, 184, 0.5) 50%, transparent 50%);
+  cursor: se-resize;
+  border-bottom-right-radius: 20px;
+}
+
+/* iPad-specific optimizations */
+@media (max-width: 1024px) {
+  .draggable-window {
+    min-width: 320px;
+    min-height: 280px;
+  }
+  
+  .window-title-bar {
+    padding: 20px;
+    height: 70px;
+  }
+  
+  .window-icon {
+    font-size: 28px;
+  }
+  
+  .window-title {
+    font-size: 20px;
+  }
+  
+  .window-button {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+  
+  .window-content {
+    height: calc(100% - 70px);
+  }
+  
+  .draggable-window.collapsed {
+    height: 70px !important;
+  }
+}
+
+/* Smooth animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.draggable-window {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .draggable-window,
+  .window-button {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Pathological state animations */
+@keyframes pathologicalPulse {
+  0% {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(239, 68, 68, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 20px 40px rgba(239, 68, 68, 0.3), 0 0 0 8px rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+  100% {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(239, 68, 68, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@keyframes flash {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.7; 
+  }
+}
+
+/* Pathological window styling */
+.draggable-window.pathological {
+  animation: pathologicalPulse 2s infinite ease-in-out;
+  border: 2px solid rgba(239, 68, 68, 0.5);
+}
+
+.draggable-window.pathological .window-title-bar {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.draggable-window.pathological .window-title {
+  color: #991b1b;
+}
+
+/* Disable pathological animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .draggable-window.pathological {
+    animation: none;
+  }
+  
+  @keyframes flash {
+    0%, 100% { opacity: 1; }
+  }
+} 
