@@ -1,0 +1,34 @@
+[
+  {
+    "name": "ThoughtSpace v0.4.0a",
+    "description": "Complete UI/UX overhaul, ready for testing as an alpha version"
+  },
+  {
+    "name": "ThoughtSpace v0.3.1",
+    "description": "Added chat support for boards"
+  },
+  {
+    "name": "ThoughtSpace v0.3.0 alpha",
+    "description": "0.3.0 alpha release with all the new features and improvised UI"
+  },
+  {
+    "name": "ThoughtSpace v0.2.2",
+    "description": "User cursors support for better collaboration"
+  },
+  {
+    "name": "ThoughtSpace v0.2.1",
+    "description": "Multiple boards support"
+  },
+  {
+    "name": "ThoughtSpace v0.2.0",
+    "description": "Websocket support for real-time updates"
+  },
+  {
+    "name": "ThoughtSpace v0.1.1a",
+    "description": "Added version changelog"
+  },
+  {
+    "name": "ThoughtSpace v0.0.5",
+    "description": "Initial release with core thought mapping functionality"
+  }
+]

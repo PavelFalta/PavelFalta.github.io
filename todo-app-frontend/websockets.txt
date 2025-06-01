@@ -1,0 +1,109 @@
+
+Frontend Guide: Migrating Todo Management to WebSockets
+This guide outlines the changes required on the frontend to switch from HTTP-based anagement to a WebSocket-based system for real-time todo interactions.
+1. Conceptual Overview
+Previously, todo operations (create, update, delete, fetch) were likely done via individual HTTP requests. With WebSockets, the frontend will:
+Establish a persistent, bidirectional connection with the server after user login.
+Send JSON messages to the server for todo actions.
+Receive JSON messages from the server for initial data, action confirmations, and error reporting.
+Update the local UI state in real-time based on these messages.
+Important Note on OpenAPI/SDK Generation: The OpenAPI specification and any SDK generated from it will cover your RESTful HTTP endpoints (e.g., authentication, user registration). WebSocket communication logic must be implemented manually using the browser's WebSocket API or a suitable client library.
+2. Establishing the WebSocket Connection
+Endpoint:
+The WebSocket endpoint is: ws://<your_backend_host>/ws_ep/ws
+For secure connections (once HTTPS is set up for the backend): wss://<your_backend_host>/ws_ep/ws
+The <your_backend_host> is the same host and port as your HTTP API (e.g., localhost:8000).
+The path /ws_ep is the prefix for the WebSocket router, and /ws is the specific endpoint.
+Timing: Initiate the WebSocket connection after a successful user login and once you have obtained the JWT access token.
+Authentication: Pass the JWT access token as a query parameter named token.
+Example: const socket = new WebSocket("ws://localhost:8000/ws_ep/ws?token=YOUR_JWT_TOKEN_HERE");
+3. Handling WebSocket Lifecycle Events
+Implement handlers for standard WebSocket events:
+onopen: Triggered when the connection is successfully established.
+onmessage: Triggered when a message is received from the server. This is where you'll process data and updates.
+onerror: Triggered if there's a connection error.
+onclose: Triggered when the connection is closed (either by server or client, or due to an error). You might want to implement reconnection logic here, perhaps with a delay.
+4. Receiving Initial Data (Todos List)
+Upon a successful onopen event (and after server-side authentication via the token is complete), the server will automatically send an initial list of all todos for the authenticated user.
+Message Format (Server to Client):
+Apply to crud.py
+Schema: WsTodosResponse
+Use this message to populate the initial state of the todo list in your application.
+5. Sending Messages to the Server (Client Actions)
+All messages from the client to the server must be JSON strings. Each message requires an action field (from WsTodoActionType) and often a payload.
+WsTodoActionType Enum (for action field values):
+"get_all_todos"
+"create_todo"
+"update_todo"
+"delete_todo"
+A. Create Todo
+Action: WsTodoActionType.CREATE_TODO ("create_todo")
+Payload: An object matching the schemas.TodoCreate model.
+Example Message (Client to Server):
+Apply to crud.py
+Schema: WsCreateTodoRequest
+B. Update Todo
+Action: WsTodoActionType.UPDATE_TODO ("update_todo")
+Message also requires a todo_id (integer) at the top level, alongside action and payload.
+Payload: An object matching schemas.TodoUpdate (only include fields to be updated).
+Example Message (Client to Server):
+Apply to crud.py
+Schema: WsUpdateTodoRequest
+C. Delete Todo
+Action: WsTodoActionType.DELETE_TODO ("delete_todo")
+Message requires a todo_id (integer) at the top level.
+Example Message (Client to Server):
+Apply to crud.py
+Schema: WsDeleteTodoRequest
+D. Get All Todos (Explicit Refresh)
+Action: WsTodoActionType.GET_ALL_TODOS ("get_all_todos")
+Payload can be null or an empty object if no specific parameters are needed.
+Example Message (Client to Server):
+Apply to crud.py
+The server will respond with a todos_list message (see section 4).
+Sending Example (JavaScript):
+Apply to crud.py
+6. Receiving Messages from the Server (Responses & Updates)
+Listen for messages in your onmessage handler. Parse the JSON.parse(event.data) and check the type field to determine how to process it.
+A. Todo Created Confirmation
+Type: "todo_created"
+Contains the newly created todo object.
+Example (Server to Client):
+Apply to crud.py
+Schema: WsTodoCreatedResponse
+Action: Add this new todo to your local list.
+B. Todo Updated Confirmation
+Type: "todo_updated"
+Contains the updated todo object.
+Example (Server to Client):
+Apply to crud.py
+Schema: WsTodoUpdateResponse
+Action: Find the todo in your local list by its ID and update it.
+C. Todo Deleted Confirmation
+Type: "todo_deleted"
+Contains the todo_id of the deleted todo.
+Example (Server to Client):
+Apply to crud.py
+Schema: WsTodoDeleteResponse
+Action: Remove the todo with this ID from your local list.
+D. Todos List (Response to get_all_todos or initial load)
+Type: "todos_list"
+(See Section 4 for format)
+Schema: WsTodosResponse
+Action: Replace your entire local todo list with the received list.
+E. Error Messages
+Type: "error"
+Indicates an error occurred while processing a client's request, or a general server-side issue related to the WebSocket.
+Example (Server to Client):
+Apply to crud.py
+Schema: WsErrorResponse
+Action: Display an appropriate error message to the user.
+F. Authentication Error (During Connection)
+If the token is missing or invalid when establishing the connection, the server will send an auth error message before closing the WebSocket connection.
+Example (Server to Client, then connection closes):
+Apply to crud.py
+Action: Handle this in onmessage (or potentially infer from onclose codes if provided and consistent, though the message is more explicit). Likely redirect to login or show an authentication error.
+7. State Management
+The frontend application will need to manage its todo list state based on these WebSocket messages. Instead of re-fetching data after each CUD (Create, Update, Delete) operation, the WebSocket will provide the necessary information to update the state directly, leading to a more responsive UI.
+8. Dependencies
+Ensure you have a robust way to handle JSON parsing and potentially a WebSocket client library if you need advanced features like automatic reconnection (though the browser's native WebSocket API is often sufficient).
