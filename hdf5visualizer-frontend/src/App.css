@@ -1,0 +1,329 @@
+#root {
+  /* max-width: 1280px; */ /* Remove or comment out */
+  /* margin: 0 auto; */ /* Remove or comment out */
+  /* padding: 2rem; */ /* Remove or comment out */
+  /* text-align: center; */ /* Already handled by .App or specific views */
+  width: 100%;
+  height: 100%;
+}
+
+html, body {
+  height: 100%; /* Ensure html and body take full height */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden; /* Prevent horizontal scrollbar if content slightly exceeds */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f4f7f6;
+  color: #333;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.App {
+  text-align: center;
+  padding: 0; /* Remove padding from App to allow full-width header */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Ensure App takes full viewport height */
+}
+
+.App-header {
+  background-color: #2c3e50; /* Dark blue-grey */
+  padding: 20px 40px; /* More padding */
+  color: white;
+  /* margin-bottom: 30px; No margin, will be part of the flex flow */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  width: 100%; /* Full width */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 1.8em; /* Slightly smaller for a sleeker look */
+}
+
+/* View specific containers */
+.upload-view,
+.plot-view {
+  flex-grow: 1; /* Allow view to take available space */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center content vertically */
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.plot-view {
+  justify-content: flex-start; /* Align plot view content to the top */
+}
+
+.controls {
+  /* This class is now part of upload-view, specific styles below */
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 12px; /* More rounded */
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1); /* Softer, larger shadow */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* Stretch items like file inputs */
+  gap: 20px; /* Increased gap */
+  width: 100%;
+  max-width: 500px; /* Max width for upload form */
+  box-sizing: border-box;
+}
+
+.file-input-group {
+  display: flex;
+  flex-direction: column; /* Stack label and input */
+  align-items: flex-start; /* Align label to the left */
+  gap: 8px;
+}
+
+.file-input-group label {
+  font-weight: 600; /* Bolder */
+  color: #34495e; 
+  font-size: 0.95em;
+}
+
+/* Styles for the new file input area */
+.file-input-area {
+  position: relative;
+  border: 2px dashed #bdc3c7; /* Dashed border for dropzone feel */
+  padding: 20px; /* More padding */
+  border-radius: 8px;
+  width: 100%; /* Full width */
+  box-sizing: border-box;
+  background-color: #f8f9fa; /* Light background */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100px; /* Give it some minimum height */
+  cursor: pointer; /* Make the whole area clickable */
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.file-input-area:hover {
+  border-color: #3498db;
+  background-color: #f1f5f9;
+}
+
+.file-input-area input[type="file"] {
+  position: absolute; /* Position input invisibly on top to make area clickable */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  /* Remove default styling for the input itself as the parent div is styled */
+  border: none;
+  padding: 0;
+  background-color: transparent;
+}
+
+.file-input-text {
+  color: #555;
+  font-size: 0.9em;
+  margin: 5px 0 0 0; /* Adjust margin */
+  pointer-events: none; /* Text shouldn't interfere with clicks on the input */
+}
+
+.file-input-text.selected {
+  color: #27ae60; /* A green color to indicate success/selection */
+  font-weight: 500;
+}
+
+/* Remove default browser styling from ::file-selector-button when input is invisible */
+.file-input-area input[type="file"]::file-selector-button {
+ display: none;
+}
+
+input[type="file"] {
+  /* General styles for file inputs if used outside .file-input-area (not current case) */
+  border: 2px dashed #bdc3c7; /* Dashed border for dropzone feel */
+  padding: 15px; /* More padding */
+  border-radius: 8px;
+  width: 100%; /* Full width */
+  box-sizing: border-box;
+  background-color: #f8f9fa; /* Light background */
+  text-align: center;
+  color: #555;
+}
+
+input[type="file"]::file-selector-button {
+  background-color: #5dade2; /* Lighter blue for inner button */
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-right: 10px;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #4b9ac8;
+}
+
+button {
+  background-color: #3498db; /* Bright blue */
+  color: white;
+  border: none;
+  padding: 12px 25px; /* Larger padding */
+  font-size: 1.05em; /* Slightly larger font */
+  font-weight: 500;
+  border-radius: 8px; /* More rounded */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+button:hover {
+  background-color: #2980b9; /* Darker blue */
+  transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0px);
+}
+
+button:disabled {
+  background-color: #95a5a6; /* Grey for disabled */
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.error-message {
+  color: #e74c3c; /* Red for errors */
+  margin-top: 15px; /* More margin */
+  font-weight: 500;
+  background-color: #fddfdf;
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #f5c6cb;
+  width: 100%;
+  max-width: 470px; /* Align with controls width */
+  box-sizing: border-box;
+}
+
+.loading-message {
+  color: #3498db; /* Blue for loading */
+  margin-top: 15px;
+  font-weight: 500;
+}
+
+.plot-controls {
+  display: flex;
+  justify-content: space-between; /* Space out selector and button */
+  align-items: center;
+  width: 100%;
+  max-width: 1200px; /* Max width for plot controls, can match plot */
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #ecf0f1;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.signal-selector {
+  /* margin-bottom: 20px; No longer needed, part of plot-controls */
+  /* padding: 10px; */
+  /* background-color: #ecf0f1; */
+  /* border-radius: 4px; */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signal-selector label {
+  /* margin-right: 10px; */
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.signal-selector select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #bdc3c7;
+  background-color: white;
+  color: #333; /* Explicitly set text color for visibility */
+  min-width: 150px; /* Give it some base width */
+}
+
+.back-button {
+  background-color: #7f8c8d; /* Greyish button */
+  font-size: 0.95em;
+  padding: 10px 18px;
+}
+
+.back-button:hover {
+  background-color: #6c7a7b;
+}
+
+.plot-container {
+  margin-top: 0; /* plot-controls provides spacing */
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  display: flex; 
+  flex-direction: column;
+  align-items: center; 
+  width: 100%;
+  max-width: 1200px; /* Consistent max width */
+  box-sizing: border-box;
+}
+
+.plot-container h2 {
+  color: #2c3e50;
+  margin-bottom: 20px; /* More space below title */
+  font-size: 1.5em;
+}
+
+/* Ensure Plotly graph div takes up space */
+.js-plotly-plot {
+    width: 100%;
+}
+
+/* Remove old segment-info, as hover is implemented */
+/* .segment-info { ... } */
