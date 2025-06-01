@@ -59,8 +59,8 @@ const projects: Project[] = [
   },
   {
     title: 'PhysioSim',
-    description: 'Advanced biosignal simulator for generating realistic physiological data including ECG, EMG, and EEG patterns with customizable parameters.',
-    url: '/docs',
+    description: 'Biosignal simulator for generating realistic physiological data including ECG, ABP, and ICP patterns with customizable parameters.',
+    url: '/physiosim/',
     styles: {
       gradient: 'from-orange-500 to-red-600',
       shadow: 'rgba(249, 115, 22, 0.4)',
