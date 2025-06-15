@@ -65,8 +65,8 @@ const App = () => {
   };
 
   const processFiles = useCallback(async () => {
-    if (!hdfFile || !artfFile) {
-      setError('Please select both HDF5 and ARTF files.');
+    if (!hdfFile) {
+      setError('Please select an HDF5 file.');
       return;
     }
     if (!h5WasmReady) {
@@ -80,30 +80,34 @@ const App = () => {
     setSelectedSignal('');
 
     try {
-      // 1. Read ARTF file
-      const artfText = await artfFile.text();
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(artfText, 'text/xml');
+      let annotations = [];
+      let annotator = 'N/A';
+      
+      // 1. Read ARTF file (if provided)
+      if (artfFile) {
+        const artfText = await artfFile.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(artfText, 'text/xml');
 
-      const infoElement = xmlDoc.querySelector('Info');
-      if (!infoElement) {
-        throw new Error('Invalid ARTF file: <Info> element not found.');
-      }
-      const artfHdf5Filename = infoElement.getAttribute('HDF5Filename');
-      const annotator = infoElement.getAttribute('UserID') || 'Unknown';
+        const infoElement = xmlDoc.querySelector('Info');
+        if (!infoElement) {
+          throw new Error('Invalid ARTF file: <Info> element not found.');
+        }
+        const artfHdf5Filename = infoElement.getAttribute('HDF5Filename');
+        annotator = infoElement.getAttribute('UserID') || 'Unknown';
 
-      if (artfHdf5Filename !== hdfFile.name) {
-        throw new Error(`ARTF file is for '${artfHdf5Filename}', but uploaded HDF5 is '${hdfFile.name}'.`);
-      }
+        if (artfHdf5Filename !== hdfFile.name) {
+          throw new Error(`ARTF file is for '${artfHdf5Filename}', but uploaded HDF5 is '${hdfFile.name}'.`);
+        }
 
-      const annotations = [];
-      xmlDoc.querySelectorAll('Global > Artefact, SignalGroup > Artefact').forEach(el => {
-        annotations.push({
-          start: unixFromDt(el.getAttribute('StartTime')),
-          end: unixFromDt(el.getAttribute('EndTime')),
-          signalGroup: el.parentElement.tagName === 'SignalGroup' ? el.parentElement.getAttribute('Name') : null
+        xmlDoc.querySelectorAll('Global > Artefact, SignalGroup > Artefact').forEach(el => {
+          annotations.push({
+            start: unixFromDt(el.getAttribute('StartTime')),
+            end: unixFromDt(el.getAttribute('EndTime')),
+            signalGroup: el.parentElement.tagName === 'SignalGroup' ? el.parentElement.getAttribute('Name') : null
+          });
         });
-      });
+      }
 
       // 2. Read HDF5 file
       const hdfFileBuffer = await hdfFile.arrayBuffer();
@@ -222,16 +226,21 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
                 const segEndTimestamp = segStartTimestamp + segmentLengthSeconds * 1000000;
                 let isAnomalous = false;
                 const segmentAnnotators = new Set();
-                annotations.forEach(ann => {
-                  if (ann.signalGroup && ann.signalGroup !== signalName) return;
-                  const overlaps = (ann.start <= segStartTimestamp && ann.end > segStartTimestamp) || 
-                                   (ann.start < segEndTimestamp && ann.end >= segEndTimestamp) ||
-                                   (ann.start >= segStartTimestamp && ann.end <= segEndTimestamp); 
-                  if (overlaps) {
-                    isAnomalous = true;
-                    segmentAnnotators.add(annotator);
-                  }
-                });
+                
+                // Only check for annotations if ARTF file was provided
+                if (artfFile && annotations.length > 0) {
+                  annotations.forEach(ann => {
+                    if (ann.signalGroup && ann.signalGroup !== signalName) return;
+                    const overlaps = (ann.start <= segStartTimestamp && ann.end > segStartTimestamp) || 
+                                     (ann.start < segEndTimestamp && ann.end >= segEndTimestamp) ||
+                                     (ann.start >= segStartTimestamp && ann.end <= segEndTimestamp); 
+                    if (overlaps) {
+                      isAnomalous = true;
+                      segmentAnnotators.add(annotator);
+                    }
+                  });
+                }
+                
                 const weight = isAnomalous ? 1.0 : 0.0; 
                 segments.push({
                   id: `${signalName}_seg_${j}`,
@@ -248,7 +257,8 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
                   time: timeArray,
                   segments: segments,
                   frequency: frequency,
-                  startTime: startTime
+                  startTime: startTime,
+                  hasAnnotations: artfFile !== null // Store whether annotations were loaded
               };
           }
         }); // End of wavesGroup.keys().forEach
@@ -303,6 +313,10 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
   // Generate shapes for Plotly based on segments
   const getPlotlyShapes = () => {
     if (!currentSignal || !currentSignal.segments) return [];
+    
+    // If no annotations were loaded, don't show any shapes to keep the plot clean
+    if (!currentSignal.hasAnnotations) return [];
+    
     return currentSignal.segments.map(seg => ({
         type: 'rect',
         xref: 'x',
@@ -330,7 +344,7 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
   return (
     <div className="App">
       <header className="App-header">
-        <h1>HDF5 / ARTF Visualizer</h1>
+        <h1>HDF5 Signal Visualizer</h1>
         {!h5WasmReady && currentView === 'upload' && <p className="loading-message">Initializing HDF5 Library, please wait...</p>}
       </header>
       
@@ -349,19 +363,24 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
               </div>
             </div>
             <div className="file-input-group">
-              <label htmlFor="artfFile">ARTF Annotation File (.artf)</label>
+              <label htmlFor="artfFile">ARTF Annotation File (.artf) - Optional</label>
               <div className="file-input-area">
                 <input type="file" id="artfFile" accept=".artf" onChange={handleArtfFileChange} disabled={!h5WasmReady || isLoading} />
                 {artfFile ? (
                   <p className="file-input-text selected">Selected: {artfFile.name}</p>
                 ) : (
-                  <p className="file-input-text">Drag & drop or click to select file</p>
+                  <p className="file-input-text">Drag & drop or click to select file (optional - for annotations)</p>
                 )}
               </div>
             </div>
-            <button onClick={processFiles} disabled={!hdfFile || !artfFile || isLoading || !h5WasmReady}>
+            <button onClick={processFiles} disabled={!hdfFile || isLoading || !h5WasmReady}>
               {isLoading ? 'Processing...' : 'Load & Process Files'}
             </button>
+            {!artfFile && hdfFile && (
+              <p className="info-message">
+                ℹ️ No annotation file selected. Signals will be displayed without anomaly annotations.
+              </p>
+            )}
             {error && <p className="error-message">{error}</p>}
             {isLoading && !error && <p className="loading-message">Loading data, please wait...</p>}
           </div>
@@ -390,6 +409,20 @@ Attributes on ${signalNameOriginal}: ${JSON.stringify(Object.keys(signalDataset.
 
           <div className="plot-container">
             <h2>Signal: {selectedSignal}</h2>
+            {currentSignal.hasAnnotations === false && (
+              <div className="annotation-status">
+                <p className="info-message">
+                  ℹ️ No annotations loaded. Upload an ARTF file to see anomaly annotations.
+                </p>
+              </div>
+            )}
+            {currentSignal.hasAnnotations === true && (
+              <div className="annotation-status">
+                <p className="success-message">
+                  ✅ Annotations loaded and displayed as colored segments.
+                </p>
+              </div>
+            )}
             <Plot
               data={[
                 {

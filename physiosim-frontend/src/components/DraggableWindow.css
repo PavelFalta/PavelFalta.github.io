@@ -2,20 +2,20 @@
   position: absolute;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border-radius: 13px;
+  box-shadow: 0 13px 27px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   transition: height 0.3s ease;
   resize: both;
-  min-width: 450px;
-  min-height: 380px;
-  max-height: 380px;
+  min-width: 302px;
+  min-height: 255px;
+  max-height: 255px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   transform: translateZ(0); /* Hardware acceleration */
 }
 
 .draggable-window.collapsed {
-  height: 60px !important;
+  height: 40px !important;
   min-height: auto;
   resize: none;
 }
@@ -23,25 +23,25 @@
 .window-title-bar {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
+  padding: 11px 13px;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   cursor: move;
   user-select: none;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  height: 60px;
+  height: 40px;
   touch-action: none; /* Prevent scrolling when dragging */
 }
 
 .window-icon {
-  margin-right: 12px;
-  font-size: 24px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  margin-right: 8px;
+  font-size: 16px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.1));
 }
 
 .window-title {
   flex-grow: 1;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 12px;
   color: #1e293b;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -51,21 +51,21 @@
 
 .window-controls {
   display: flex;
-  gap: 8px;
+  gap: 5px;
 }
 
 .window-button {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.2);
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 7px;
   color: #64748b;
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 600;
   transition: all 0.2s ease;
   touch-action: manipulation;
@@ -92,7 +92,7 @@
 
 .window-content {
   padding: 0;
-  height: calc(100% - 60px);
+  height: calc(100% - 40px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -108,46 +108,46 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 20px;
-  height: 20px;
+  width: 13px;
+  height: 13px;
   background: linear-gradient(-45deg, transparent 30%, rgba(148, 163, 184, 0.5) 30%, rgba(148, 163, 184, 0.5) 50%, transparent 50%);
   cursor: se-resize;
-  border-bottom-right-radius: 20px;
+  border-bottom-right-radius: 13px;
 }
 
 /* iPad-specific optimizations */
 @media (max-width: 1024px) {
   .draggable-window {
-    min-width: 320px;
-    min-height: 280px;
+    min-width: 214px;
+    min-height: 188px;
   }
   
   .window-title-bar {
-    padding: 20px;
-    height: 70px;
+    padding: 13px;
+    height: 47px;
   }
   
   .window-icon {
-    font-size: 28px;
+    font-size: 19px;
   }
   
   .window-title {
-    font-size: 20px;
+    font-size: 13px;
   }
   
   .window-button {
-    width: 44px;
-    height: 44px;
-    font-size: 20px;
-    border-radius: 12px;
+    width: 29px;
+    height: 29px;
+    font-size: 13px;
+    border-radius: 8px;
   }
   
   .window-content {
-    height: calc(100% - 70px);
+    height: calc(100% - 47px);
   }
   
   .draggable-window.collapsed {
-    height: 70px !important;
+    height: 47px !important;
   }
 }
 
@@ -224,5 +224,56 @@
   
   @keyframes flash {
     0%, 100% { opacity: 1; }
+  }
+}
+
+/* Scale up for larger screens (PC/Desktop) */
+@media (min-width: 1300px) {
+  .draggable-window {
+    border-radius: 20px; /* 13px * 1.5 */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); /* 13px 27px * 1.5 */
+    min-width: 450px; /* 302px * 1.5 */
+    min-height: 380px; /* 255px * 1.5 */
+    max-height: 380px; /* 255px * 1.5 */
+  }
+  
+  .draggable-window.collapsed {
+    height: 60px !important; /* 40px * 1.5 */
+  }
+  
+  .window-title-bar {
+    padding: 16px 20px; /* 11px 13px * 1.5 */
+    height: 60px; /* 40px * 1.5 */
+  }
+  
+  .window-icon {
+    margin-right: 12px; /* 8px * 1.5 */
+    font-size: 24px; /* 16px * 1.5 */
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); /* 1px 3px * 1.5 */
+  }
+  
+  .window-title {
+    font-size: 18px; /* 12px * 1.5 */
+  }
+  
+  .window-controls {
+    gap: 8px; /* 5px * 1.5 */
+  }
+  
+  .window-button {
+    width: 36px; /* 24px * 1.5 */
+    height: 36px; /* 24px * 1.5 */
+    border-radius: 10px; /* 7px * 1.5 */
+    font-size: 18px; /* 12px * 1.5 */
+  }
+  
+  .window-content {
+    height: calc(100% - 60px); /* 40px * 1.5 */
+  }
+  
+  .draggable-window::after {
+    width: 20px; /* 13px * 1.5 */
+    height: 20px; /* 13px * 1.5 */
+    border-bottom-right-radius: 20px; /* 13px * 1.5 */
   }
 } 

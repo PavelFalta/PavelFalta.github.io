@@ -47,14 +47,14 @@ const HumanBody: React.FC<HumanBodyProps> = ({ activeSignals, onToggleSignal }) 
 
   return (
     <div className="human-body">
-      <div className="simulator-title">
-        <div className="title-header">
-          <img src={OdasLogo} alt="ODAS Logo" className="odas-logo" />
-          <div className="title-content">
-            <div className="title-main">
-              <span className="title-text">PhysioSim</span>
+      <div className="app-header-title">
+        <div className="header-content-wrapper">
+          <img src={OdasLogo} alt="ODAS Logo" className="logo-image" />
+          <div className="text-content-container">
+            <div className="main-title-container">
+              <span className="main-title-text">PhysioSim</span>
             </div>
-            <span className="title-subtitle">Bio-Signal Simulator</span>
+            <span className="subtitle-text">Bio-Signal Simulator</span>
           </div>
         </div>
       </div>

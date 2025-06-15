@@ -16,8 +16,10 @@ interface DataPoint {
 function detectPeaks(data: DataPoint[]): DataPoint[] {
   if (data.length < 50) return [];
   
-  // Simple approach: divide data into chunks and find highest positive point in each chunk
-  const chunkSize = 50; // About 0.2 seconds worth of data at 250Hz
+  // Updated for 100Hz data (backend now uses 100Hz, not 250Hz)
+  // At 100Hz: 1 second = 100 samples, so 0.2 seconds = 20 samples
+  // For reliable peak detection, use smaller chunks to catch all peaks
+  const chunkSize = 20; // About 0.2 seconds worth of data at 100Hz
   const peaks: DataPoint[] = [];
   
   for (let start = 0; start < data.length; start += chunkSize) {
@@ -148,7 +150,7 @@ const SignalWindow = ({
   dimensions
 }: SignalWindowProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 400, height: 250 });
+  const [chartDimensions, setChartDimensions] = useState({ width: 268, height: 168 });
 
   // Use ResizeObserver to detect container size changes
   useEffect(() => {
@@ -158,10 +160,18 @@ const SignalWindow = ({
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
+        
+        // Responsive scaling based on screen size
+        const isLargeScreen = window.innerWidth >= 1300;
+        const minWidth = isLargeScreen ? 400 : 268;
+        const minHeight = isLargeScreen ? 320 : 214;
+        const widthPadding = isLargeScreen ? 10 : 7;
+        const heightPadding = isLargeScreen ? 90 : 60;
+        
         // Give the chart more space - account for info panel and margins for labels
         setChartDimensions({
-          width: Math.max(400, width - 10), // Minimal padding for better chart size
-          height: Math.max(320, height - 90) // Account for info panel (40px) and larger margins
+          width: Math.max(minWidth, width - widthPadding),
+          height: Math.max(minHeight, height - heightPadding)
         });
       }
     });
@@ -173,8 +183,11 @@ const SignalWindow = ({
     };
   }, []);
 
-  // Chart dimensions based on container size
-  const margin = { top: 20, right: 20, bottom: 55, left: 55 };
+  // Chart dimensions based on container size - responsive margins
+  const isLargeScreen = window.innerWidth >= 1300;
+  const margin = isLargeScreen 
+    ? { top: 20, right: 20, bottom: 55, left: 55 }  // Original size for PC
+    : { top: 13, right: 13, bottom: 37, left: 37 }; // Smaller size for iPad
   const innerWidth = chartDimensions.width - margin.left - margin.right;
   const innerHeight = chartDimensions.height - margin.top - margin.bottom;
 
@@ -313,17 +326,19 @@ const SignalWindow = ({
         style={{ 
           width: '100%', 
           height: '100%',
-          minHeight: '260px',
+          minHeight: isLargeScreen ? '260px' : '174px', // Responsive min height
           display: 'flex',
           flexDirection: 'column',
           background: '#fafafa',
-          borderRadius: '8px',
+          borderRadius: isLargeScreen ? '8px' : '5px', // Responsive border radius
           overflow: 'hidden',
           position: 'relative', // For absolute positioning of overlays
           // Add pathological styling here instead of on DraggableWindow
           border: pathologicalStatus.isPathological ? '2px solid rgba(239, 68, 68, 0.5)' : 'none',
           boxShadow: pathologicalStatus.isPathological 
-            ? '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(239, 68, 68, 0.7)' 
+            ? isLargeScreen 
+              ? '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(239, 68, 68, 0.7)' // PC size
+              : '0 13px 27px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(239, 68, 68, 0.7)' // iPad size
             : 'none',
           animation: pathologicalStatus.isPathological ? 'pathologicalPulse 2s infinite ease-in-out' : 'none'
         }}
@@ -331,37 +346,77 @@ const SignalWindow = ({
         {/* Chart container - takes full height */}
         <div style={{ 
           flex: 1, 
-          padding: '10px',
+          padding: isLargeScreen ? '10px' : '7px', // Responsive padding
           background: 'white',
-          borderRadius: '8px',
-          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)',
+          borderRadius: isLargeScreen ? '8px' : '5px', // Responsive border radius
+          boxShadow: isLargeScreen 
+            ? 'inset 0 1px 3px rgba(0,0,0,0.1)' // PC size
+            : 'inset 0 1px 2px rgba(0,0,0,0.1)', // iPad size
           position: 'relative'
         }}>
           {/* Permanent value display - top right corner */}
           <div style={{
             position: 'absolute',
-            top: '15px',
-            right: '15px',
+            top: isLargeScreen ? '15px' : '10px', // Responsive positioning
+            right: isLargeScreen ? '15px' : '10px', // Responsive positioning
             background: pathologicalStatus.isPathological 
               ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9))' 
               : 'rgba(255, 255, 255, 0.95)',
             color: pathologicalStatus.isPathological ? '#ffffff' : '#374151',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            fontSize: '14px',
+            padding: isLargeScreen ? '8px 12px' : '5px 8px', // Responsive padding
+            borderRadius: isLargeScreen ? '8px' : '5px', // Responsive border radius
+            fontSize: isLargeScreen ? '14px' : '9px', // Responsive font size
             fontWeight: '600',
             border: pathologicalStatus.isPathological 
               ? '2px solid rgba(239, 68, 68, 0.8)' 
               : '1px solid rgba(0, 0, 0, 0.1)',
             boxShadow: pathologicalStatus.isPathological 
-              ? '0 4px 12px rgba(239, 68, 68, 0.3), 0 0 0 1px rgba(239, 68, 68, 0.2)' 
-              : '0 2px 8px rgba(0, 0, 0, 0.1)',
+              ? isLargeScreen
+                ? '0 4px 12px rgba(239, 68, 68, 0.3), 0 0 0 1px rgba(239, 68, 68, 0.2)' // PC size
+                : '0 3px 8px rgba(239, 68, 68, 0.3), 0 0 0 1px rgba(239, 68, 68, 0.2)' // iPad size
+              : isLargeScreen
+                ? '0 2px 8px rgba(0, 0, 0, 0.1)' // PC size
+                : '0 1px 5px rgba(0, 0, 0, 0.1)', // iPad size
             zIndex: 10,
             backdropFilter: 'blur(8px)',
             animation: pathologicalStatus.isPathological ? 'flash 1.5s infinite ease-in-out' : 'none'
           }}>
             {getValueDisplay(signalType, pathologicalStatus.value, visibleData)}
           </div>
+
+          {/* Loading indicator when no data */}
+          {data.length === 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              zIndex: 5
+            }}>
+              {/* Loading circle */}
+              <div style={{
+                width: isLargeScreen ? '48px' : '32px', // Responsive size
+                height: isLargeScreen ? '48px' : '32px', // Responsive size
+                border: isLargeScreen ? '4px solid #f3f4f6' : '3px solid #f3f4f6', // Responsive border
+                borderTop: isLargeScreen ? `4px solid ${color}` : `3px solid ${color}`, // Responsive border
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                marginBottom: isLargeScreen ? '12px' : '8px' // Responsive margin
+              }}></div>
+              {/* Loading text */}
+              <div style={{
+                color: '#6b7280',
+                fontSize: isLargeScreen ? '14px' : '9px', // Responsive font size
+                fontWeight: '500',
+                textAlign: 'center'
+              }}>
+                Waiting for signal data...
+              </div>
+            </div>
+          )}
 
           <svg width={chartDimensions.width} height={chartDimensions.height}>
             <Group left={margin.left} top={margin.top}>
@@ -397,11 +452,13 @@ const SignalWindow = ({
                   x={accessors.getX}
                   y={accessors.getY}
                   stroke={color}
-                  strokeWidth={2.5}
+                  strokeWidth={isLargeScreen ? 2.5 : 1.7} // Responsive stroke width
                   curve={curveLinear}
                   fill="none"
                   style={{
-                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+                    filter: isLargeScreen 
+                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' // PC size
+                      : 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))' // iPad size
                   }}
                 />
               )}
@@ -410,38 +467,38 @@ const SignalWindow = ({
               <AxisBottom
                 top={innerHeight}
                 scale={scales.xScale}
-                numTicks={Math.max(3, Math.floor(innerWidth / 80))}
+                numTicks={Math.max(3, Math.floor(innerWidth / (isLargeScreen ? 80 : 53)))} // Responsive tick spacing
                 stroke="#666"
                 tickStroke="#666"
                 label={axisLabels.xLabel}
                 tickLabelProps={{
                   fill: '#666',
-                  fontSize: 11,
+                  fontSize: isLargeScreen ? 11 : 7, // Responsive font size
                   textAnchor: 'middle',
                   fontFamily: 'system-ui, -apple-system, sans-serif'
                 }}
                 labelProps={{
                   fill: '#666',
-                  fontSize: 12,
+                  fontSize: isLargeScreen ? 12 : 8, // Responsive font size
                   textAnchor: 'middle',
                   fontFamily: 'system-ui, -apple-system, sans-serif'
                 }}
               />
               <AxisLeft
                 scale={scales.yScale}
-                numTicks={Math.max(3, Math.floor(innerHeight / 40))}
+                numTicks={Math.max(3, Math.floor(innerHeight / (isLargeScreen ? 40 : 27)))} // Responsive tick spacing
                 stroke="#666"
                 tickStroke="#666"
                 label={axisLabels.yLabel}
                 tickLabelProps={{
                   fill: '#666',
-                  fontSize: 11,
+                  fontSize: isLargeScreen ? 11 : 7, // Responsive font size
                   textAnchor: 'end',
                   fontFamily: 'system-ui, -apple-system, sans-serif'
                 }}
                 labelProps={{
                   fill: '#666',
-                  fontSize: 12,
+                  fontSize: isLargeScreen ? 12 : 8, // Responsive font size
                   textAnchor: 'middle',
                   fontFamily: 'system-ui, -apple-system, sans-serif'
                 }}

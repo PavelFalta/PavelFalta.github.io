@@ -7,9 +7,10 @@
   transform: scale(1.2);
 }
 
-.simulator-title {
+/* NEW TITLE CLASSES - NO ANIMATIONS */
+.app-header-title {
   position: absolute;
-  top: -180px;
+  top: -14vh; /* Moved up slightly from -5vh */
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.95);
@@ -20,48 +21,46 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   z-index: 1000;
-  animation: float 6s ease-in-out infinite;
+  /* NO ANIMATION BY DEFAULT */
+  animation: none;
   max-width: 320px;
+  /* Ensure it never goes off screen */
+  min-top: 10px;
 }
 
-.title-header {
+.header-content-wrapper {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-.odas-logo {
+.logo-image {
   width: 48px;
   height: 48px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
-.title-content {
+.text-content-container {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
 }
 
-.title-main {
+.main-title-container {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.title-icon {
-  font-size: 20px;
-  animation: pulse-icon 3s ease-in-out infinite;
-}
-
-.title-text {
+.main-title-text {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-.title-subtitle {
+.subtitle-text {
   font-size: 12px;
   font-weight: 500;
   opacity: 0.7;
@@ -170,39 +169,41 @@
   }
 }
 
-/* iPad-specific optimizations */
+/* Responsive styles for tablets */
 @media (max-width: 1024px) {
-  .human-body {
-    transform: scale(1.6);
-    margin-bottom: 200px; /* Make room for bottom controls */
-  }
-  
-  .simulator-title {
+  .app-header-title {
     padding: 20px 28px;
-    top: -200px;
+    top: -10vh; /* Moved up slightly from -8vh */
     border-radius: 20px;
-    max-width: 380px;
+    max-width: 480px;
+    white-space: nowrap;
+    width: max-content;
+    /* STILL NO ANIMATION */
+    animation: none !important;
   }
   
-  .title-header {
+  .header-content-wrapper {
     gap: 20px;
   }
   
-  .odas-logo {
+  .logo-image {
     width: 56px;
     height: 56px;
   }
   
-  .title-icon {
-    font-size: 24px;
-  }
-  
-  .title-text {
+  .main-title-text {
     font-size: 20px;
+    white-space: nowrap;
   }
   
-  .title-subtitle {
+  .subtitle-text {
     font-size: 14px;
+    white-space: nowrap;
+  }
+  
+  .human-body {
+    transform: scale(1.6);
+    margin-bottom: 200px; /* Make room for bottom controls */
   }
   
   .body-part {
@@ -215,6 +216,103 @@
   
   .body-part:hover {
     transform: scale(1.15);
+  }
+}
+
+/* iPad Pro and larger tablets */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .app-header-title {
+    max-width: 600px;
+    animation: none !important;
+  }
+}
+
+/* ALL Landscape modes - NO ANIMATION EVER */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .app-header-title {
+    max-width: none !important;
+    width: max-content;
+    top: -6vh !important; /* Moved up slightly from -4vh */
+    left: 50%;
+    transform: translateX(-50%) !important;
+    animation: none !important;
+    position: absolute !important;
+  }
+  
+  .main-title-text {
+    font-size: 18px;
+  }
+  
+  .subtitle-text {
+    font-size: 13px;
+  }
+  
+  .header-content-wrapper {
+    white-space: nowrap;
+    overflow: visible;
+  }
+}
+
+/* Smaller landscape heights */
+@media (max-width: 1024px) and (orientation: landscape) and (max-height: 600px) {
+  .app-header-title {
+    top: -3vh !important; /* Very conservative for short screens */
+    animation: none !important;
+  }
+}
+
+/* Very small landscape heights */
+@media (max-width: 1024px) and (orientation: landscape) and (max-height: 500px) {
+  .app-header-title {
+    top: -2vh !important; /* Extremely conservative for tiny screens */
+    padding: 12px 24px;
+    animation: none !important;
+  }
+  
+  .main-title-text {
+    font-size: 16px;
+  }
+  
+  .subtitle-text {
+    font-size: 12px;
+  }
+  
+  .logo-image {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Wide landscape screens */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .app-header-title {
+    max-width: none !important;
+    padding: 16px 32px;
+    top: -3vh !important; /* Conservative positioning for wide landscape */
+    animation: none !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* Extra safety for very short screens */
+@media (max-height: 400px) {
+  .app-header-title {
+    top: -1vh !important; /* Minimal offset for extremely short screens */
+    padding: 8px 16px !important;
+    animation: none !important;
+  }
+  
+  .main-title-text {
+    font-size: 14px !important;
+  }
+  
+  .subtitle-text {
+    font-size: 10px !important;
+  }
+  
+  .logo-image {
+    width: 32px !important;
+    height: 32px !important;
   }
 }
 

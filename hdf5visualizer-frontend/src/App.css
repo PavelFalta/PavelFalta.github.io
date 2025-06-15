@@ -252,12 +252,52 @@ button:disabled {
   font-weight: 500;
 }
 
+.info-message {
+  color: #3498db; /* Blue for info */
+  margin-top: 15px;
+  font-weight: 500;
+  background-color: #dbeafe;
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+  width: 100%;
+  max-width: 470px; /* Align with controls width */
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.success-message {
+  color: #27ae60; /* Green for success */
+  margin-top: 15px;
+  font-weight: 500;
+  background-color: #d4edda;
+  padding: 10px 15px;
+  border-radius: 6px;
+  border: 1px solid #c3e6cb;
+  width: 100%;
+  max-width: 470px; /* Align with controls width */
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.annotation-status {
+  margin-bottom: 15px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.annotation-status .info-message,
+.annotation-status .success-message {
+  max-width: 600px; /* Slightly wider for plot view */
+}
+
 .plot-controls {
   display: flex;
   justify-content: space-between; /* Space out selector and button */
   align-items: center;
   width: 100%;
-  max-width: 1200px; /* Max width for plot controls, can match plot */
+  max-width: 1300px; /* Max width for plot controls, can match plot */
   margin-bottom: 20px;
   padding: 10px;
   background-color: #ecf0f1;
@@ -310,7 +350,7 @@ button:disabled {
   flex-direction: column;
   align-items: center; 
   width: 100%;
-  max-width: 1200px; /* Consistent max width */
+  max-width: 1300px; /* Consistent max width */
   box-sizing: border-box;
 }
 

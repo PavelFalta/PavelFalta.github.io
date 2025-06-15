@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import HumanBody from './components/HumanBody'
 import SignalWindow from './components/SignalWindow'
+import Tutorial from './components/Tutorial'
 import './App.css'
 
 interface DataPoint {
@@ -71,7 +72,7 @@ interface CycleInfo {
 const SIGNAL_TYPES = {
   "heart": { label: "Electrocardiogram (EKG)", icon: "💓" },
   "lungs": { label: "Respiratory", icon: "🫁" },
-  "blood_pressure": { label: "Arterial Blood Pressure (ABP)", icon: "🩸" },
+  "blood_pressure": { label: "Arterial Blood Pressure (ABP5)", icon: "🩸" },
   "brain": { label: "Intracranial Pressure (ICP)", icon: "🧠" },
   "temperature": { label: "Body Temperature", icon: "🌡️" }
 }
@@ -96,6 +97,12 @@ function App() {
   
   // Autoregulation control state
   const [autoregulationEnabled, setAutoregulationEnabled] = useState<boolean>(true);
+  
+  // Tutorial state
+  const [showTutorial, setShowTutorial] = useState<boolean>(false);
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   
   // Debug panel state - commented out for now
   // const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
@@ -157,6 +164,7 @@ function App() {
   useEffect(() => {
     let lastPerformanceCheck = 0;
     let pageHidden = false;
+    let lastFrameTime = 0;
 
     // Handle page visibility changes to prevent animation issues when tab is minimized
     const handleVisibilityChange = () => {
@@ -164,6 +172,7 @@ function App() {
       if (!pageHidden) {
         // Page became visible again - reset timing for all signals to prevent burst updates
         const currentTime = performance.now();
+        lastFrameTime = currentTime; // Reset frame timing
         Object.keys(signalAnimationStatesRef.current).forEach(signalType => {
           if (signalAnimationStatesRef.current[signalType]) {
             signalAnimationStatesRef.current[signalType].lastProcessTime = currentTime;
@@ -188,7 +197,13 @@ function App() {
       // Initialize timing on first frame
       if (lastPerformanceCheck === 0) {
         lastPerformanceCheck = currentTime;
+        lastFrameTime = currentTime;
       }
+
+      // Calculate actual frame rate for adaptive processing
+      const frameTime = currentTime - lastFrameTime;
+      lastFrameTime = currentTime;
+      const actualFPS = frameTime > 0 ? Math.min(60, 1000 / frameTime) : 60;
 
       // Batch updates for better performance
       const batchUpdates: { [signalType: string]: DataPoint[] } = {};
@@ -213,6 +228,10 @@ function App() {
         const timeSinceLastPoint = currentTime - signalState.lastProcessTime;
         const msPerPoint = 1000 / signalState.speed;
 
+        // Emergency buffer overflow protection - if queue is too large, process aggressively
+        const isOverflowing = signalState.queue.length > 1500;
+        const isHighSpeed = signalState.speed > 300;
+
         if (timeSinceLastPoint >= msPerPoint && signalState.queue.length > 0) {
           // Find points that are ready to be displayed based on animationTime
           const readyPoints = signalState.queue.filter(point => 
@@ -222,15 +241,42 @@ function App() {
           if (readyPoints.length > 0) {
             // Calculate how many ready points we should process this frame
             const pointsToProcess = Math.floor(timeSinceLastPoint / msPerPoint);
-            const actualPointsToProcess = Math.min(pointsToProcess, readyPoints.length, 10); // Limit to 10 points per frame for stability
+            
+            // Adaptive points per frame based on speed and buffer state
+            let maxPointsPerFrame;
+            if (isOverflowing) {
+              // Emergency mode: process up to 100 points per frame
+              maxPointsPerFrame = 100;
+            } else if (isHighSpeed) {
+              // High speed mode: scale with adaptive speed and frame rate
+              maxPointsPerFrame = Math.min(50, Math.ceil(signalState.speed / actualFPS));
+            } else {
+              // Normal mode: conservative limit
+              maxPointsPerFrame = 15;
+            }
+            
+            const actualPointsToProcess = Math.min(pointsToProcess, readyPoints.length, maxPointsPerFrame);
 
             if (actualPointsToProcess > 0) {
               // Take the first ready points
               const pointsToAdd = readyPoints.slice(0, actualPointsToProcess);
               
-              // Remove processed points from queue more efficiently
-              const processedPointSet = new Set(pointsToAdd);
-              signalState.queue = signalState.queue.filter(point => !processedPointSet.has(point));
+              // More efficient queue removal - use splice for better performance
+              if (actualPointsToProcess === readyPoints.length && readyPoints.length === signalState.queue.length) {
+                // All points processed - clear queue entirely
+                signalState.queue = [];
+              } else {
+                // Remove processed points - find indices and splice
+                const processedSet = new Set(pointsToAdd);
+                let removeCount = 0;
+                for (let i = 0; i < signalState.queue.length && removeCount < actualPointsToProcess; i++) {
+                  if (processedSet.has(signalState.queue[i])) {
+                    signalState.queue.splice(i, 1);
+                    i--; // Adjust index after removal
+                    removeCount++;
+                  }
+                }
+              }
               
               // Batch the points for a single state update
               batchUpdates[signalType] = pointsToAdd.map(p => ({ x: p.x, y: p.y }));
@@ -242,6 +288,13 @@ function App() {
               signalState.pendingPoints = signalState.queue.length;
             }
           }
+        }
+
+        // Emergency buffer management - drop oldest data if queue is still too large
+        if (signalState.queue.length > 2000) {
+          const dropCount = signalState.queue.length - 1000;
+          signalState.queue.splice(0, dropCount); // Drop oldest points
+          console.warn(`Signal ${signalType}: Dropped ${dropCount} points due to buffer overflow`);
         }
       });
 
@@ -337,7 +390,8 @@ function App() {
     // Setup WebSocket connection
     const connectWebSocket = () => {
       const socket = new WebSocket(`wss://page-backend-production.up.railway.app/ws/${clientId}`);
-      
+      // const socket = new WebSocket(`ws://localhost:8000/ws/${clientId}`);
+            
       socket.onopen = () => {
         setConnected(true);
         
@@ -440,7 +494,7 @@ function App() {
                 }
                 
                 // Apply queue pressure to baseline speed
-                const adaptiveSpeed = Math.max(10, Math.min(500, baselineSpeed * queuePressureFactor));
+                const adaptiveSpeed = Math.max(10, Math.min(2000, baselineSpeed * queuePressureFactor));
                 
                 // Batch create cycle points for better performance
                 const cyclePoints: QueuedDataPoint[] = new Array(prevCycle.points.length);
@@ -619,27 +673,35 @@ function App() {
     setGlobalFrequency(heartRateValue / 60);
   };
 
-  // Calculate custom window dimensions for different signal types
+  // Calculate custom window dimensions for different signal types - responsive scaling
   const calculateWindowDimensions = (signalType: string) => {
+    // Base scale for iPad (current size)
+    let scale = 0.67;
+    
+    // Scale up for larger screens (PC/Desktop)
+    if (window.innerWidth >= 1300) {
+      scale = 1.0; // Back to original size
+    }
+    
     switch (signalType) {
       case 'blood_pressure':
         // Wider window for blood pressure to show detailed waveforms
-        return { width: 720, height: 380 };
+        return { width: Math.round(720 * scale), height: Math.round(380 * scale) };
       case 'brain':
         // Taller window for brain signals to show frequency details
-        return { width: 580, height: 380 };
+        return { width: Math.round(580 * scale), height: Math.round(380 * scale) };
       case 'heart':
         // Compact square-ish window for EKG
-        return { width: 520, height: 380 };
+        return { width: Math.round(520 * scale), height: Math.round(380 * scale) };
       case 'temperature':
         // Smaller window for slow-changing temperature
-        return { width: 480, height: 340 };
+        return { width: Math.round(480 * scale), height: Math.round(340 * scale) };
       case 'lungs':
         // Medium-wide window for respiratory signals
-        return { width: 640, height: 390 };
+        return { width: Math.round(640 * scale), height: Math.round(390 * scale) };
       default:
         // Default dimensions
-        return { width: 600, height: 400 };
+        return { width: Math.round(600 * scale), height: Math.round(400 * scale) };
     }
   };
 
@@ -741,6 +803,61 @@ function App() {
     }
   }, []);
 
+  // Check if user has seen tutorial before
+  useEffect(() => {
+    const tutorialSeen = localStorage.getItem('physiological-monitor-tutorial-seen');
+    if (!tutorialSeen) {
+      // Show tutorial automatically for new users after a short delay
+      const timer = setTimeout(() => {
+        setShowTutorial(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+    localStorage.setItem('physiological-monitor-tutorial-seen', 'true');
+  };
+
+  const handleTutorialClose = () => {
+    setShowTutorial(false);
+    localStorage.setItem('physiological-monitor-tutorial-seen', 'true');
+  };
+
+  const startTutorial = () => {
+    setShowTutorial(true);
+  };
+
+  // Fullscreen toggle functions
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.error('Error attempting to enable fullscreen:', err);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      } catch (err) {
+        console.error('Error attempting to exit fullscreen:', err);
+      }
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   return (
     <div className="canvas-container">
       {/* Human body in the center */}
@@ -796,20 +913,51 @@ function App() {
           </div>
         </div>
         
-        {/* Debug controls - commented out for now
+        {/* Help/Tutorial button */}
         <div className="control-group">
+          <button 
+            className="help-button"
+            onClick={startTutorial}
+            title="Show tutorial and help"
+          >
+            🎓 Tutorial
+          </button>
+        </div>
+        
+        {/* Fullscreen toggle button - only show when not in fullscreen */}
+        {/* {!isFullscreen && (
+          <div className="control-group">
+            <button 
+              className="fullscreen-button"
+              onClick={toggleFullscreen}
+              title="Enter fullscreen"
+            >
+              📺 Fullscreen
+            </button>
+          </div>
+        )} */}
+        
+        {/* Debug controls - commented out for now */}
+        {/* <div className="control-group">
           <button 
             className="debug-toggle"
             onClick={() => setShowDebugPanel(!showDebugPanel)}
           >
             {showDebugPanel ? '🔧 Hide Debug' : '🔧 Debug Info'}
           </button>
-        </div>
-        */}
+        </div> */}
+       
       </div>
       
-      {/* Debug panel - commented out for now
-      {showDebugPanel && (
+      {/* Tutorial component */}
+      <Tutorial 
+        isVisible={showTutorial}
+        onClose={handleTutorialClose}
+        onComplete={handleTutorialComplete}
+      />
+      
+      {/* Debug panel - commented out for now */}
+      {/* {showDebugPanel && (
         <div className="debug-panel">
           <div className="debug-content">
             <div className="debug-title">🎯 Animation Debug</div>
@@ -838,8 +986,8 @@ function App() {
             </div>
           </div>
         </div>
-      )}
-      */}
+      )} */}
+     
       
       {/* Signal windows */}
       {windows.map(window => {

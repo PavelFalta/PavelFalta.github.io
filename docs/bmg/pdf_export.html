@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <!-- Remove browser metadata -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="creator" content="">
+    <meta name="producer" content="">
+    <meta name="author" content="">
+    <meta name="date" content="">
+    <meta name="subject" content="">
+    <meta name="generator" content="">
+    <style type="text/css" media="print">
+        @page { margin: 0; size: auto; }
+        body { margin: 0; }
+    </style>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        /* PDF Export Specific Styles */
+        @page {
+            size: A4 landscape;
+            margin: 0.3cm; /* Reduce margins to create more space */
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fff;
+            font-size: 11pt; /* Increased base font size */
+            margin: 0;
+            padding: 0;
+            position: relative;
+            color: #333;
+            height: auto;
+        }
+        
+        /* Watermark */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><text x="50%" y="50%" font-family="Arial" font-size="20" fill="rgba(150,150,150,0.1)" text-anchor="middle" dominant-baseline="middle" transform="rotate(-45, 100, 100)">Sustainable BMC</text></svg>');
+            background-repeat: repeat;
+            opacity: 0.5;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .export-wrapper {
+            position: relative;
+            padding: 0.5cm; /* Reduced padding */
+            box-sizing: border-box;
+            height: auto;
+            display: block;
+        }
+        
+        .export-header {
+            text-align: center;
+            margin-bottom: 0.4cm; /* Slightly more margin for better spacing */
+            display: block;
+        }
+        
+        .export-header h1 {
+            font-size: 20pt; /* Larger header */
+            color: #146c43;
+            margin: 0;
+            font-weight: 600;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .export-header h1::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #146c43, transparent);
+        }
+        
+        .export-header .industry-name {
+            font-size: 13pt; /* Larger industry name */
+            color: #6c757d;
+            margin-top: 0.3cm; /* A bit more space for better readability */
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .export-header .industry-name::before {
+            content: "🌱";
+            margin-right: 0.3cm;
+            font-size: 12pt;
+        }
+        
+        .sbmc-container {
+            padding: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            gap: 0.3cm;
+            align-items: flex-start;
+        }
+        
+        /* Left column */
+        .sbmc-column-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+            flex: 1;
+            width: 50%;
+        }
+        
+        /* Right column */
+        .sbmc-column-right {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+            flex: 1;
+            width: 50%;
+        }
+        
+        /* Remove old grid row styles */
+        .sbmc-row-impacts {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+        }
+        
+        .sbmc-row-main {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+        }
+        
+        .sbmc-row-financial {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+        }
+        
+        /* Remove stacked column styles - no longer needed */
+        .sbmc-col-stacked {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2cm;
+        }
+        
+        /* Card styling */
+        .sbmc-card {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.2cm;
+            padding: 0.2cm; /* Reduced padding */
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 0.2cm;
+        }
+        
+        .sbmc-card.has-notes {
+            background-color: #d1e7dd;
+            border-color: #a3cfbb;
+        }
+        
+        .sbmc-card-title {
+            font-size: 11pt; /* Larger title */
+            font-weight: 600;
+            color: #146c43;
+            margin-bottom: 0.1cm; /* Less space */
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 0.1cm;
+        }
+        
+        .sbmc-card-title i {
+            margin-right: 0.15cm; /* Less space */
+            font-size: 12pt; /* Larger icon */
+        }
+        
+        .sbmc-card-content {
+            font-size: 10pt; /* Larger content text */
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        
+        .sbmc-questions {
+            margin: 0;
+            padding-left: 0.2cm; /* Less indent */
+            color: #6c757d;
+            font-style: italic;
+            margin-bottom: 0.05cm; /* Less space */
+            font-size: 9pt; /* Larger questions text */
+        }
+        
+        .sbmc-answer {
+            margin: 0;
+            padding: 0.15cm; /* Less padding */
+            color: #212529;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 0.1cm;
+            min-height: 0.3cm; /* Smaller min-height */
+            margin-bottom: 0.15cm; /* Less space */
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            max-height: none; /* Allow full content */
+            font-size: 9.5pt; /* Larger answer text */
+        }
+        
+        .sbmc-answer:empty {
+            display: none;
+        }
+        
+        /* Remove footer with timestamp */
+        .export-footer {
+            display: none;
+        }
+        
+        /* No data placeholder */
+        .no-data {
+            color: #adb5bd;
+            font-style: italic;
+            text-align: center;
+            margin-top: 0.2cm;
+            font-size: 9pt; /* Larger no-data text */
+        }
+        
+        /* Print optimization */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            @page {
+                size: A4 landscape;
+                margin: 0 !important; /* No margins to avoid browser headers */
+                /* Aggressively hide browser headers and footers */
+                @top-left-corner { content: "" !important; }
+                @top-left { content: "" !important; }
+                @top-center { content: "" !important; }
+                @top-right { content: "" !important; }
+                @top-right-corner { content: "" !important; }
+                @bottom-left-corner { content: "" !important; }
+                @bottom-left { content: "" !important; }
+                @bottom-center { content: "" !important; }
+                @bottom-right { content: "" !important; }
+                @bottom-right-corner { content: "" !important; }
+                @left-top { content: "" !important; }
+                @left-middle { content: "" !important; }
+                @left-bottom { content: "" !important; }
+                @right-top { content: "" !important; }
+                @right-middle { content: "" !important; }
+                @right-bottom { content: "" !important; }
+            }
+            
+            /* Hide browser metadata completely */
+            @page :first {
+                margin-header: 0 !important;
+                margin-footer: 0 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
+            
+            @page :left {
+                margin-header: 0 !important;
+                margin-footer: 0 !important;
+            }
+            
+            @page :right {
+                margin-header: 0 !important;
+                margin-footer: 0 !important;
+            }
+            
+            html, body {
+                width: auto !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .export-wrapper {
+                padding: 0.8cm !important; /* Add padding since we removed page margins */
+                height: auto !important;
+                display: block !important;
+                page-break-inside: avoid;
+            }
+            
+            .export-header {
+                margin-bottom: 0.5cm !important;
+                page-break-after: avoid;
+                break-after: avoid;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .sbmc-container {
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 0.3cm !important;
+                align-items: flex-start !important;
+                page-break-inside: auto;
+            }
+            
+            .sbmc-column-left,
+            .sbmc-column-right {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 0.2cm !important;
+                flex: 1 !important;
+                width: 50% !important;
+                page-break-inside: auto;
+                break-inside: auto;
+            }
+            
+            .sbmc-card {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+                margin-bottom: 0.2cm !important;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+                border: 1px solid #ccc !important;
+            }
+            
+            /* Add top margin specifically when card is pushed to new page */
+            .sbmc-card {
+                break-before: auto;
+                page-break-before: auto;
+            }
+            
+            /* Target cards that appear after a page break */
+            @supports (break-after: page) {
+                .sbmc-card:has(+ .sbmc-card) {
+                    break-after: avoid;
+                }
+            }
+            
+            /* Remove problematic spacing that causes page breaks */
+            
+            .sbmc-card-title {
+                break-after: avoid;
+                page-break-after: avoid;
+                font-size: 10pt !important;
+            }
+            
+            .sbmc-card-content {
+                orphans: 2;
+                widows: 2;
+                font-size: 9.5pt !important;
+            }
+            
+            /* Ensure content doesn't get cut off */
+            .sbmc-questions,
+            .sbmc-answer {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            
+            /* Additional browser-specific hiding */
+            head { display: none !important; }
+            title { display: none !important; }
+            
+            /* Chrome/Safari specific header/footer hiding */
+            html {
+                -webkit-print-page-break: avoid;
+            }
+            
+            /* Chromium-specific fixes */
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* Force content to stay together on first page */
+            .export-header h1 {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            
+            .export-header .industry-name {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            
+            /* Ensure container doesn't break from header */
+            .sbmc-container {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="export-wrapper">
+        <div class="export-header">
+            <h1>Sustainable Business Model Canvas</h1>
+            <div class="industry-name" id="exportIndustryName">Industry:&nbsp;<span></span></div>
+        </div>
+        
+        <div class="sbmc-container">
+            <!-- Left Column -->
+            <div class="sbmc-column-left">
+                <!-- Positive Impacts -->
+                <div class="sbmc-card" id="export-positive_impacts">
+                    <div class="sbmc-card-title"><i class="bi bi-graph-up-arrow"></i>Positive Impacts (Maximise)</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                </div>
+            </div>
+            
+                <!-- Partners -->
+                <div class="sbmc-card" id="export-partners">
+                    <div class="sbmc-card-title"><i class="bi bi-people"></i>Sustainable Partners</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Value Creation -->
+                    <div class="sbmc-card" id="export-value_creation">
+                        <div class="sbmc-card-title"><i class="bi bi-gear"></i>Sustainable Value Creation</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                
+                <!-- Tech Resources -->
+                    <div class="sbmc-card" id="export-tech_resources">
+                        <div class="sbmc-card-title"><i class="bi bi-plug"></i>Sustainable Tech & Resources</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Value Proposition -->
+                <div class="sbmc-card" id="export-value_proposition">
+                    <div class="sbmc-card-title"><i class="bi bi-bullseye"></i>Sustainable Value Proposition</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Cost Structure -->
+                <div class="sbmc-card" id="export-cost">
+                    <div class="sbmc-card-title"><i class="bi bi-cash-coin"></i>Cost Structure & Additional Costs</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                
+                <!-- Subsidisation -->
+                <div class="sbmc-card" id="export-subsidisation">
+                    <div class="sbmc-card-title"><i class="bi bi-bank"></i>Subsidisation</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                
+            <!-- Right Column -->
+            <div class="sbmc-column-right">
+                <!-- Negative Impacts -->
+                <div class="sbmc-card" id="export-negative_impacts">
+                    <div class="sbmc-card-title"><i class="bi bi-graph-down-arrow"></i>Negative Impacts (Minimise)</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                
+                <!-- Customer Relations -->
+                <div class="sbmc-card" id="export-customer_relation">
+                    <div class="sbmc-card-title"><i class="bi bi-heart"></i>Sustainable Customer Relation</div>
+                        <div class="sbmc-card-content">
+                            <!-- Content populated by JS -->
+                        </div>
+                    </div>
+                
+                <!-- Channels -->
+                <div class="sbmc-card" id="export-channels">
+                    <div class="sbmc-card-title"><i class="bi bi-truck"></i>Sustainable Channels</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                </div>
+            </div>
+            
+                <!-- Customers -->
+                <div class="sbmc-card" id="export-customers">
+                    <div class="sbmc-card-title"><i class="bi bi-person-check"></i>Responsible Customers</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- End of Life -->
+                <div class="sbmc-card" id="export-end_of_life">
+                    <div class="sbmc-card-title"><i class="bi bi-recycle"></i>End of Life</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Revenue -->
+                <div class="sbmc-card" id="export-revenue">
+                    <div class="sbmc-card-title"><i class="bi bi-bar-chart-line"></i>Revenue & Sustainability Premium</div>
+                    <div class="sbmc-card-content">
+                        <!-- Content populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // JavaScript to populate content from localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            // Remove timestamp section
+            
+            // Get selected industry
+            const selectedIndustry = localStorage.getItem('selectedIndustry') || 'Not specified';
+            const formattedIndustry = selectedIndustry === 'Not specified' ? selectedIndustry : selectedIndustry.charAt(0).toUpperCase() + selectedIndustry.slice(1).replace(/_/g, ' ');
+            document.getElementById('exportIndustryName').querySelector('span').textContent = formattedIndustry;
+            
+            // Aggressively hide metadata
+            document.title = '';
+            
+            // Remove any existing meta tags that might show up
+            const metaTags = document.querySelectorAll('meta');
+            metaTags.forEach(tag => {
+                if (tag.name || tag.property) {
+                    tag.remove();
+                }
+            });
+            
+            // Add print-specific JavaScript
+            window.addEventListener('beforeprint', function() {
+                document.title = '';
+                // Try to hide browser chrome elements
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    @media print {
+                        @page { 
+                            margin: 0 !important; 
+                            size: A4 landscape !important;
+                        }
+                        * { 
+                            -webkit-print-color-adjust: exact !important; 
+                            color-adjust: exact !important; 
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            });
+            
+            // Load questions data
+            fetch('questions.json')
+                .then(response => response.json())
+                .then(questionsData => {
+                    populateCanvas(questionsData, selectedIndustry);
+                })
+                .catch(error => {
+                    console.error('Error loading questions data:', error);
+                    document.body.innerHTML = `
+                        <div style="padding: 2cm; text-align: center; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 0.3cm;">
+                            <h2>Error Loading Data</h2>
+                            <p>Could not load questions data. Please try again or contact support.</p>
+                        </div>
+                    `;
+                });
+        });
+        
+        function populateCanvas(questionsData, industry) {
+            // List of all block IDs
+            const blockIds = [
+                'positive_impacts', 'negative_impacts', 'partners', 'value_creation', 
+                'tech_resources', 'value_proposition', 'customer_relation', 'channels', 
+                'customers', 'end_of_life', 'cost', 'subsidisation', 'revenue'
+            ];
+            
+            // Process each block
+            blockIds.forEach(blockId => {
+                const blockContainer = document.getElementById(`export-${blockId}`);
+                if (!blockContainer) return;
+                
+                const contentDiv = blockContainer.querySelector('.sbmc-card-content');
+                
+                // Get questions for this block
+                const questions = (questionsData[industry] && questionsData[industry][blockId]) || 
+                                  (questionsData.default && questionsData.default[blockId]) || [];
+                
+                // Get saved answers from localStorage
+                const storageKey = `bmcNotes_${industry}_${blockId}`;
+                let savedNotes = {};
+                try {
+                    const savedNotesJson = localStorage.getItem(storageKey);
+                    if (savedNotesJson) {
+                        savedNotes = JSON.parse(savedNotesJson);
+                        // Mark card as having notes
+                        if (Object.keys(savedNotes).length > 0) {
+                            blockContainer.classList.add('has-notes');
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error parsing saved notes for ${blockId}:`, e);
+                }
+                
+                // Create content HTML
+                let contentHTML = '';
+                let hasAnyContent = false;
+                
+                questions.forEach((question, index) => {
+                    contentHTML += `<div class="sbmc-questions">${question}</div>`;
+                    if (savedNotes[index]) {
+                        contentHTML += `<div class="sbmc-answer">${savedNotes[index]}</div>`;
+                        hasAnyContent = true;
+                    } else {
+                        contentHTML += `<div class="sbmc-answer"></div>`;
+                    }
+                });
+                
+                if (!hasAnyContent && questions.length > 0) {
+                    contentHTML += `<div class="no-data">No answers provided yet</div>`;
+                }
+                
+                contentDiv.innerHTML = contentHTML || '<div class="no-data">No data available</div>';
+            });
+            
+            // Auto-trigger print after a small delay to allow rendering
+            setTimeout(() => {
+                window.print();
+            }, 1000);
+        }
+    </script>
+</body>
+</html> 
