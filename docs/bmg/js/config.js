@@ -3,7 +3,7 @@
 
 const CONFIG = {
     // Backend server configuration
-    BACKEND_URL: 'http://localhost:8000',
+    BACKEND_URL: 'http://bmg-production.up.railway.app:8000',
     
     // API endpoints (automatically constructed from BACKEND_URL)
     get API_HEALTHCHECK() {
