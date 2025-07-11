@@ -12,7 +12,7 @@ interface Project {
     hoverShadow?: string;
     textColor?: string;
     hoverTextColor?: string;
-    hoverEffect?: 'neon' | 'pulse' | 'traffic' | 'signalPulse' | 'heartbeat';
+    hoverEffect?: 'neon' | 'pulse' | 'traffic' | 'signalPulse' | 'heartbeat' | 'financePulse';
   };
 }
 
@@ -68,6 +68,19 @@ const projects: Project[] = [
       textColor: 'text-orange-400',
       hoverTextColor: 'text-red-300',
       hoverEffect: 'heartbeat'
+    }
+  },
+  {
+    title: 'Finance Pal',
+    description: 'A sleek, modern expense tracker with glassmorphism UI, expense categorization, and beautiful analytics charts.',
+    url: '/finance-pal/',
+    styles: {
+      gradient: 'from-blue-700 to-indigo-800',
+      shadow: 'rgba(59, 130, 246, 0.4)',
+      hoverShadow: 'rgba(99, 102, 241, 0.6)',
+      textColor: 'text-blue-300',
+      hoverTextColor: 'text-indigo-200',
+      hoverEffect: 'financePulse'
     }
   },
   // Add other projects here
@@ -163,6 +176,19 @@ function ProjectCard({ project }: { project: Project }): React.ReactElement {
             repeat: Infinity,
             repeatType: "loop" as const,
             ease: "easeInOut"
+          }
+        };
+      case 'financePulse':
+        return {
+          whileHover: { 
+            scale: 1.05, 
+            boxShadow: `0 0 25px ${styles.hoverShadow}, 0 0 15px ${styles.shadow}`,
+            y: -5
+          },
+          transition: { 
+            type: "spring", 
+            stiffness: 400, 
+            damping: 15 
           }
         };
       default:
@@ -303,6 +329,43 @@ function ProjectCard({ project }: { project: Project }): React.ReactElement {
         </div>
       )}
       
+      {/* New: Finance Pal chart effect */}
+      {styles.hoverEffect === 'financePulse' && (
+        <div className="absolute right-4 top-4 flex items-center space-x-1">
+          <motion.svg
+            width="40"
+            height="20"
+            viewBox="0 0 40 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="opacity-70"
+          >
+            <motion.path
+              d="M2 18 C 8 10, 12 2, 20 8 S 30 18, 38 12"
+              stroke="#A5B4FC"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ 
+                pathLength: isHovered ? 1 : 0,
+                opacity: isHovered ? 1 : 0
+              }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+            />
+          </motion.svg>
+          <motion.div 
+            className="w-2 h-2 rounded-full bg-green-400"
+            animate={{
+                boxShadow: isHovered 
+                ? ['0 0 0px rgba(74, 222, 128, 0)', '0 0 10px rgba(74, 222, 128, 0.9)', '0 0 0px rgba(74, 222, 128, 0)'] 
+                : '0 0 0px rgba(74, 222, 128, 0)',
+            }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+          />
+        </div>
+      )}
+
       <div className="relative z-10"> {/* Content wrapper to stay above effects */}
         <h2 className="text-xl font-semibold text-white mb-2">{project.title}</h2>
         <p className="text-gray-200 mb-4">{project.description}</p>
