@@ -30,7 +30,11 @@ const subProjects = [
   {
     path: 'physiosim-frontend',
     name: 'physiosim',
-  }
+  },
+  {
+    path: 'finance-pal',
+    name: 'finance-pal',
+  },
   // {
   //   path: 'path/to/another-app',
   //   name: 'another-app-name',
