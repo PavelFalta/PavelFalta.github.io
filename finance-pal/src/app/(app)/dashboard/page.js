@@ -8,7 +8,7 @@ import Link from "next/link";
 function useAuthFetch() {
   return async (path, opts = {}) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    const base = process.env.NEXT_PUBLIC_API_URL || "https://finance-backend-production-f25f.up.railway.app";
+    const base = "https://finance-backend-production-f25f.up.railway.app";
     const res = await fetch(base + path, {
       ...opts,
       headers: {
