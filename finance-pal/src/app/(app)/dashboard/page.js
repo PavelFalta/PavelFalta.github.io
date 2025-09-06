@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [spendings, setSpendings] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [paycheckDay, setPaycheckDay] = useState(1);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1);
   const [goalAmount, setGoalAmount] = useState("");
@@ -49,18 +50,22 @@ export default function DashboardPage() {
     (async () => {
       try {
         const qp = `?year=${viewYear}&month=${viewMonth}`;
-        const [sumRes, spRes, catRes] = await Promise.all([
+        // Also fetch next month spendings so we can build pay periods that span months
+        const nextDate = new Date(viewYear, viewMonth - 1 + 1, 1);
+        const qpNext = `?year=${nextDate.getFullYear()}&month=${nextDate.getMonth() + 1}`;
+        const [sumRes, spRes, spNextRes, catRes] = await Promise.all([
           authFetch(`/dashboard${qp}`),
           authFetch(`/spendings${qp}`),
+          authFetch(`/spendings${qpNext}`),
           authFetch("/categories"),
         ]);
         // Optimistically clear previous data to avoid visual flash from old month
         setSummary(null);
         setSpendings([]);
-        const [sum, sp, cat] = await Promise.all([sumRes.json(), spRes.json(), catRes.json()]);
+        const [sum, sp, spNext, cat] = await Promise.all([sumRes.json(), spRes.json(), spNextRes.json(), catRes.json()]);
         if (!active) return;
         setSummary(sum);
-        setSpendings(sp);
+        setSpendings([...(Array.isArray(sp) ? sp : []), ...(Array.isArray(spNext) ? spNext : [])]);
         setCategories(cat);
       } catch (e) {
         if (!active) return;
@@ -71,6 +76,20 @@ export default function DashboardPage() {
     })();
     return () => { active = false; };
   }, [viewYear, viewMonth]);
+
+  // Load paycheck day from settings (used to align charts to pay period)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await authFetch("/settings");
+        const data = await res.json();
+        if (!active) return;
+        if (data && typeof data.paycheck_day === "number") setPaycheckDay(data.paycheck_day || 1);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
 
   // toast from settings
   useEffect(() => {
@@ -352,7 +371,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <DonutChart data={spendings} categories={categories} currency={summary.currency} anim={anim} />
+              <DonutChart data={filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay)} categories={categories} currency={summary.currency} anim={anim} />
             )}
           </div>
           <div className="rounded-xl border border-black/10 dark:border-white/15 p-5 backdrop-blur supports-[backdrop-filter]:bg-white/5 dark:supports-[backdrop-filter]:bg-black/20 relative overflow-hidden">
@@ -361,7 +380,14 @@ export default function DashboardPage() {
             {loading ? (
               <div className="w-full h-[200px] rounded bg-white/10 animate-pulse" />
             ) : (
-              <LineChart data={spendings} year={viewYear} month={viewMonth} currency={summary.currency} selectedDay={filterDay} onSelectDay={(d)=>scrollToDay(d)} />
+              <LineChart
+                data={filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay)}
+                startDate={computePeriodStart(viewYear, viewMonth, paycheckDay)}
+                numDays={computePeriodDays(viewYear, viewMonth, paycheckDay)}
+                currency={summary.currency}
+                selectedDay={filterDay}
+                onSelectDay={(d)=>scrollToDay(d)}
+              />
             )}
           </div>
           <div className="rounded-xl border border-black/10 dark:border-white/15 p-5 backdrop-blur supports-[backdrop-filter]:bg-white/5 dark:supports-[backdrop-filter]:bg-black/20 md:col-span-2 relative overflow-hidden">
@@ -370,7 +396,15 @@ export default function DashboardPage() {
             {loading ? (
               <div className="w-full h-[200px] rounded bg-white/10 animate-pulse" />
             ) : (
-              <CumulativeChart data={spendings} goal={summary.month_goal} year={viewYear} month={viewMonth} currency={summary.currency} selectedDay={filterDay} onSelectDay={(d)=>scrollToDay(d)} />
+              <CumulativeChart
+                data={filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay)}
+                goal={summary.month_goal}
+                startDate={computePeriodStart(viewYear, viewMonth, paycheckDay)}
+                numDays={computePeriodDays(viewYear, viewMonth, paycheckDay)}
+                currency={summary.currency}
+                selectedDay={filterDay}
+                onSelectDay={(d)=>scrollToDay(d)}
+              />
             )}
           </div>
         </section>
@@ -391,7 +425,12 @@ export default function DashboardPage() {
                 <div className="h-9 w-12 rounded-md bg-white/10 animate-pulse" />
               </div>
             ) : (
-              <DayWheel year={viewYear} month={viewMonth} selectedDay={filterDay} onChange={(key) => { if (!key) { setFilterDay(null); return; } scrollToDay(key); }} />
+              <DayWheel
+                startDate={computePeriodStart(viewYear, viewMonth, paycheckDay)}
+                numDays={computePeriodDays(viewYear, viewMonth, paycheckDay)}
+                selectedDay={filterDay}
+                onChange={(key) => { if (!key) { setFilterDay(null); return; } scrollToDay(key); }}
+              />
             )}
           </div>
           <div ref={listRef} className="space-y-2 max-h-[360px] overflow-auto pr-1">
@@ -585,19 +624,55 @@ function DonutChart({ data, categories, currency, anim = 1 }) {
   // no helper needed; we compute mid-angle per arc
 }
 
-function LineChart({ data, year, month, currency, selectedDay, onSelectDay }) {
-  // group by day
+// Pay period helpers
+function clampPaycheckDay(d) {
+  const n = Number(d) || 1;
+  if (n < 1) return 1;
+  if (n > 28) return 28;
+  return n;
+}
+
+function computePeriodStart(year, month, paycheckDay) {
+  const day = clampPaycheckDay(paycheckDay);
+  return new Date(year, month - 1, day);
+}
+
+function computePeriodEnd(year, month, paycheckDay) {
+  const start = computePeriodStart(year, month, paycheckDay);
+  return new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
+}
+
+function computePeriodDays(year, month, paycheckDay) {
+  const start = computePeriodStart(year, month, paycheckDay);
+  const end = computePeriodEnd(year, month, paycheckDay);
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  return Math.max(1, Math.round((end - start) / MS_PER_DAY));
+}
+
+function filterSpendingsByPayPeriod(spendings, year, month, paycheckDay) {
+  const start = computePeriodStart(year, month, paycheckDay);
+  const end = computePeriodEnd(year, month, paycheckDay);
+  return spendings.filter((s) => {
+    const d = new Date(s.spent_at);
+    return d >= start && d < end;
+  });
+}
+
+function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay }) {
+  // group by day in pay period
   const dayToSum = new Map();
   data.forEach((s) => {
     const d = new Date(s.spent_at);
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     dayToSum.set(key, (dayToSum.get(key) || 0) + s.amount);
   });
-  // ensure all days of the month appear on the x axis
-  const daysInMonth = new Date(year, month, 0).getDate();
   const values = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const key = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const dayKeys = [];
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(startDate.getTime());
+    d.setDate(d.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    dayKeys.push(key);
     values.push(dayToSum.get(key) || 0);
   }
   const h = 200, padding = 16;
@@ -657,10 +732,11 @@ function LineChart({ data, year, month, currency, selectedDay, onSelectDay }) {
           const y = yAt(v);
           const { left, right } = bandX(i);
           const visible = drawP >= (i / Math.max(1, values.length - 1));
+          const key = dayKeys[i];
           return (
             <g key={i}>
-              <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(`${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`)} />
-              <circle cx={x} cy={y} r={hover?.i === i ? 5 : (selectedDay && parseInt(selectedDay.split('-')[2],10) === i+1 ? 5 : 3)} fill={selectedDay && parseInt(selectedDay.split('-')[2],10) === i+1 ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
+              <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(key)} />
+              <circle cx={x} cy={y} r={hover?.i === i ? 5 : (selectedDay === key ? 5 : 3)} fill={selectedDay === key ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
             </g>
           );
         })}
@@ -676,7 +752,7 @@ function LineChart({ data, year, month, currency, selectedDay, onSelectDay }) {
   );
 }
 
-function CumulativeChart({ data, goal, year, month, currency, selectedDay, onSelectDay }) {
+function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay, onSelectDay }) {
   const h = 200, padding = 16;
   const byDay = new Map();
   data.forEach((s) => {
@@ -684,12 +760,15 @@ function CumulativeChart({ data, goal, year, month, currency, selectedDay, onSel
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     byDay.set(key, (byDay.get(key) || 0) + s.amount);
   });
-  const daysInMonth = new Date(year, month, 0).getDate();
   const points = [];
+  const dayKeys = [];
   let acc = 0;
-  for (let day = 1; day <= daysInMonth; day++) {
-    const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(startDate.getTime());
+    d.setDate(d.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     acc += byDay.get(key) || 0;
+    dayKeys.push(key);
     points.push(acc);
   }
   const maxV = Math.max(goal || 0, ...points, 1);
@@ -729,9 +808,9 @@ function CumulativeChart({ data, goal, year, month, currency, selectedDay, onSel
           <path ref={pathRefIdeal} d={idealPathD} fill="none" stroke="#22d3ee" strokeDasharray={4} style={{ strokeDasharray: pathLenIdeal, strokeDashoffset: Math.max(0, (1 - drawPIdeal) * pathLenIdeal) }} />
         )}
         <path ref={pathRef} d={points.map((v,i)=>`${i===0?"M":"L"} ${xAt(i)} ${yAt(v)}`).join(" ")} fill="none" stroke="#8b5cf6" strokeWidth="2" style={{ strokeDasharray: pathLen, strokeDashoffset: Math.max(0, (1 - drawP) * pathLen) }} />
-        {points.map((v, i) => { const { left, right } = bandX(i); const x = xAt(i); const y = yAt(v); const visible = drawP >= (i / Math.max(1, points.length - 1)); const isSel = selectedDay && parseInt(selectedDay.split('-')[2],10) === i+1; return (
+        {points.map((v, i) => { const { left, right } = bandX(i); const x = xAt(i); const y = yAt(v); const visible = drawP >= (i / Math.max(1, points.length - 1)); const key = dayKeys[i]; const isSel = selectedDay === key; return (
           <g key={i}>
-            <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(`${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`)} />
+            <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(key)} />
             <circle cx={x} cy={y} r={hover?.i === i ? 5 : (isSel ? 5 : 3)} fill={isSel ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
           </g>
         ); })}
@@ -881,9 +960,8 @@ function generateDemoSpendings(year, month) {
   return out;
 }
 
-function DayWheel({ year, month, selectedDay, onChange }) {
-  const days = new Date(year, month, 0).getDate();
-  const items = useMemo(() => [null, ...Array.from({ length: days }, (_, i) => i + 1)], [days]);
+function DayWheel({ startDate, numDays, selectedDay, onChange }) {
+  const items = useMemo(() => [null, ...Array.from({ length: numDays }, (_, i) => i + 1)], [numDays]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const internalUpdateRef = useRef(false);
   const lastIndexRef = useRef(-1);
@@ -894,8 +972,31 @@ function DayWheel({ year, month, selectedDay, onChange }) {
 
   const keyFor = useCallback((d) => {
     if (!d) return null;
-    return `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  }, [year, month]);
+    const dt = new Date(startDate.getTime());
+    dt.setDate(dt.getDate() + (d - 1));
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  }, [startDate]);
+
+  const labelFor = useCallback((d) => {
+    if (!d) return 'All';
+    const dt = new Date(startDate.getTime());
+    dt.setDate(dt.getDate() + (d - 1));
+    return dt.getDate();
+  }, [startDate]);
+
+  function indexForSelectedDay(key) {
+    if (!key) return 0;
+    try {
+      const [y, m, day] = key.split('-').map((x) => parseInt(x, 10));
+      const sel = new Date(y, m - 1, day);
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const diff = Math.floor((sel.setHours(0,0,0,0) - new Date(startDate.getTime()).setHours(0,0,0,0)) / msPerDay);
+      if (diff < 0 || diff >= numDays) return 0;
+      return diff + 1; // +1 because index 0 is 'All'
+    } catch {
+      return 0;
+    }
+  }
 
   const [sliderRef, slider] = useKeenSlider({
     loop: true,
@@ -904,7 +1005,7 @@ function DayWheel({ year, month, selectedDay, onChange }) {
     renderMode: "performance",
     slides: { perView: 7, spacing: 8, origin: "center" },
     created(s) {
-      const idx = selectedDay ? parseInt(selectedDay.split("-")[2], 10) : 0;
+      const idx = indexForSelectedDay(selectedDay);
       try { s.moveToIdx(idx, true); } catch {}
       setSelectedIndex(idx);
       internalUpdateRef.current = true;
@@ -954,10 +1055,10 @@ function DayWheel({ year, month, selectedDay, onChange }) {
     if (!slider?.current) return;
     if (internalUpdateRef.current) return; // ignore internal updates during spin
     if (isAnimatingRef.current || isDraggingRef.current) return; // don't fight momentum or drag
-    const idx = selectedDay ? parseInt(selectedDay.split("-")[2], 10) : 0;
+    const idx = indexForSelectedDay(selectedDay);
     try { slider.current.moveToIdx(idx, true); } catch {}
     setSelectedIndex(idx);
-  }, [slider, selectedDay, year, month]);
+  }, [slider, selectedDay, startDate, numDays]);
 
   const selectByIndex = useCallback((i) => {
     try { slider?.current?.moveToIdx(i); } catch {}
@@ -974,7 +1075,7 @@ function DayWheel({ year, month, selectedDay, onChange }) {
             return (
               <div key={i} className="keen-slider__slide !w-auto min-w-[56px]">
                 <div className={`flex-[0_0_auto]`}>
-                  <button onClick={() => selectByIndex(i)} className={`h-9 w-10 rounded-md border ${active ? 'border-white/60' : 'border-white/20'} backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white text-sm hover:ring-1 hover:ring-white/30 transition`}>{d ?? 'All'}</button>
+                  <button onClick={() => selectByIndex(i)} className={`h-9 w-10 rounded-md border ${active ? 'border-white/60' : 'border-white/20'} backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white text-sm hover:ring-1 hover:ring-white/30 transition`}>{labelFor(d)}</button>
                 </div>
               </div>
             );
