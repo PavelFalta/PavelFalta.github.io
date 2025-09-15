@@ -208,7 +208,7 @@ export default function DashboardPage() {
     const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const elapsed = Math.max(0, Math.min(periodDays, Math.floor((todayMid - startMid) / MS) + 1));
     const remaining = Math.max(0, periodDays - elapsed);
-    const remainingPct = (remaining / periodDays) * 100;
+    const remainingPct = 100 - (remaining / periodDays) * 100;
     return { remaining, remainingPct };
   }, [isCurrentPeriod, periodStart, periodDays]);
 
@@ -326,7 +326,12 @@ export default function DashboardPage() {
         <section className="grid gap-6 md:grid-cols-2 mb-8">
           <div className="rounded-xl border border-black/10 dark:border-white/15 p-5 backdrop-blur supports-[backdrop-filter]:bg-white/5 dark:supports-[backdrop-filter]:bg-black/20 relative overflow-hidden">
             {loading && <LoadingBar />}
-            <h2 className="text-sm mb-2">Monthly goal progress</h2>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="text-sm">Monthly goal progress</h2>
+              <div className="text-xs text-black/60 dark:text-white/60 whitespace-nowrap">
+                {displayedSpent.toFixed(2)} / {summary.month_goal ? summary.month_goal.toFixed(2) : "—"} {summary.currency}
+              </div>
+            </div>
             {loading ? (
               <>
                 <div className="h-3 w-full rounded-full bg-white/10 animate-pulse" />
@@ -339,49 +344,49 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="relative">
-                  <div className="h-3 w-full rounded-full overflow-hidden relative border border-black/10 dark:border-white/15" style={{ background: "rgba(0,0,0,0.05)" }}>
+                  <div className="mb-6 h-3 w-full rounded-full overflow-hidden relative border border-black/10 dark:border-white/15" style={{ background: "rgba(0,0,0,0.05)" }}>
                     {(!isCurrentMonth && goalProgress > 0 && goalProgress < 100) && (
                       <div className="absolute inset-0 bg-green-500/25" />
                     )}
                     <div className="relative h-full" style={{ width: `${goalProgress}%`, backgroundColor: mixColor("#22d3ee", "#8b5cf6", Math.min(1, goalProgress/100)) }} />
                   </div>
                   {/* Indicators overlay (not clipped) */}
-                  {projectedPercent && (
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
-                      {projectedPercent.pctRaw > 100 ? (
-                        // Overspend: show only one indicator (badge at right edge)
-                        <div className="absolute -top-8 right-0 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap flex items-center gap-1">
-                          <span>Projected {projectedPercent.pctRaw}%</span>
-                          <span aria-hidden>↗</span>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Marker at position */}
-                          <div className="absolute -top-3 h-6 w-0.5 bg-[#a78bfa]" style={{ left: `${projectedPercent.pct * anim}%` }} />
-                          {/* Badge-styled label aligned to marker */}
-                          <div className={`absolute -top-8 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap ${tooltipAlignClass(projectedPercent.pct * anim)}`} style={{ left: `${projectedPercent.pct * anim}%` }}>
-                            Projected
+                  {(() => {
+                    const p1 = projectedPercent ? projectedPercent.pct * anim : null;
+                    const p2 = idealByTodayPct != null ? idealByTodayPct * anim : null;
+                    const { left1, left2, v1, v2 } = computeLabelLayout(p1, p2);
+                    return (
+                      <>
+                        {projectedPercent && (
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
+                            {projectedPercent.pctRaw > 100 ? (
+                              <div className="absolute top-4 right-0 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap flex items-center gap-1">
+                                <span>{projectedPercent.pctRaw}% ↗</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="absolute -top-3 h-6 w-0.5 bg-[#a78bfa]" style={{ left: `${projectedPercent.pct * anim}%` }} />
+                                <div className={`absolute ${v1} text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap ${tooltipAlignClass(left1)}`} style={{ left: `${left1}%` }}>
+                                  Projected
+                                </div>
+                              </>
+                            )}
                           </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {idealByTodayPct != null && periodProgress ? (
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
-                      {/* Marker */}
-                      <div className="absolute -top-3 h-6 w-0.5 bg-[#22d3ee]" style={{ left: `${idealByTodayPct * anim}%` }} />
-                      {/* Badge-styled label aligned to marker */}
-                      <div className={`absolute -top-8 text-xs px-2 py-0.5 rounded bg-[#22d3ee]/20 text-[#22d3ee] border border-[#22d3ee]/40 whitespace-nowrap ${tooltipAlignClass(idealByTodayPct * anim)}`} style={{ left: `${idealByTodayPct * anim}%` }}>
-                        {`${periodProgress.remaining} days to go (${periodProgress.remainingPct.toFixed(1)}%)`
-                        }
-                      </div>
-                    </div>
-                  ) : null}
+                        )}
+                        {idealByTodayPct != null && periodProgress && (
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
+                            <div className="absolute -top-3 h-6 w-0.5 bg-[#22d3ee]" style={{ left: `${idealByTodayPct * anim}%` }} />
+                            <div className={`absolute ${v2} text-xs px-2 py-0.5 rounded bg-[#22d3ee]/20 text-[#22d3ee] border border-[#22d3ee]/40 whitespace-nowrap ${tooltipAlignClass(left2)}`} style={{ left: `${left2}%` }}>
+                              {`${periodProgress.remaining} days to go (${periodProgress.remainingPct.toFixed(1)}%)`}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
-                <p className="text-sm mt-2 text-black/60 dark:text-white/60">
-                  {displayedSpent.toFixed(2)} / {summary.month_goal ? summary.month_goal.toFixed(2) : "—"} {summary.currency}
-                </p>
-                <div className="mt-3 flex items-end justify-between gap-3">
+                {/* moved amount text into the header row above to free space for labels */}
+                <div className="mt-3 flex items-end justify-between gap-3 mt-10">
                   <div className="text-sm text-black/60 dark:text-white/60">
                     {projectedPercent ? (
                       <>Projected: <span className="text-black dark:text-white">{(projectedPercent.projectedTotal * anim).toFixed(2)} {summary.currency}</span></>
@@ -824,6 +829,34 @@ function tooltipAlignClass(percent) {
   }
 }
 
+function tooltipVerticalClass(percent) {
+  try {
+    const p = Number(percent) || 0;
+    // Near edges, prefer placing below to avoid header/edges
+    if (p < 15 || p > 85) return 'top-4'; // below the bar
+    return '-top-8'; // above the bar
+  } catch {
+    return '-top-8';
+  }
+}
+
+function computeLabelLayout(p1, p2) {
+  const SEP = 6; // minimum percent separation to avoid horizontal overlap
+  let left1 = p1 != null ? p1 : null;
+  let left2 = p2 != null ? p2 : null;
+  // Default: place both labels under the bar
+  let v1 = 'top-4';
+  let v2 = 'top-4';
+  if (left1 != null && left2 != null) {
+    if (Math.abs(left1 - left2) < SEP) {
+      // Stack both under with a small vertical gap
+      v1 = 'top-4';
+      v2 = 'top-8';
+    }
+  }
+  return { left1, left2, v1, v2 };
+}
+
 function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay, hoverKey, setHoverKey }) {
   // group by day in pay period
   const dayToSum = new Map();
@@ -1110,14 +1143,31 @@ function EditSpendingModal({ spending, onSaved, onClosed }) {
 }
 
 function DeleteSpendingModal({ id, onDeleted, onClosed }) {
+  const [busy, setBusy] = useState(false);
+  async function handleDelete() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onDeleted?.(id);
+      onClosed?.();
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur grid place-items-center p-4" onClick={onClosed}>
       <div className="w-full max-w-sm rounded-xl border border-white/15 bg-black/50 p-5" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-3">Delete spending</h3>
         <p className="text-sm mb-4 text-white/80">This action cannot be undone.</p>
         <div className="flex justify-end gap-2">
-          <button className="h-10 px-4 rounded-md border border-white/15" onClick={onClosed}>Cancel</button>
-          <button className="h-10 px-4 rounded-md bg-red-500/90 text-white" onClick={() => onDeleted?.(id)}>Delete</button>
+          <button className="h-10 px-4 rounded-md border border-white/15" onClick={onClosed} disabled={busy}>Cancel</button>
+          <button className={`h-10 px-4 rounded-md ${busy ? 'bg-red-500/50' : 'bg-red-500/90'} text-white flex items-center justify-center`} onClick={handleDelete} disabled={busy}>
+            {busy ? (
+              <span className="inline-block h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" aria-label="Deleting" />
+            ) : (
+              'Delete'
+            )}
+          </button>
         </div>
       </div>
     </div>
