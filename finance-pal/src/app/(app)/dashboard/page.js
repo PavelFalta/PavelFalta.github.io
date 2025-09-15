@@ -43,7 +43,7 @@ export default function DashboardPage() {
   const [filterDay, setFilterDay] = useState(null); // YYYY-MM-DD or null
   const [loading, setLoading] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
-  const [tooltipOwner, setTooltipOwner] = useState(null); // 'line' | 'cumulative' | null
+  const [hoverKey, setHoverKey] = useState(null); // YYYY-MM-DD for synchronized tooltips
 
   useEffect(() => {
     let active = true;
@@ -126,7 +126,33 @@ export default function DashboardPage() {
   }, [viewYear, viewMonth]);
 
   const displayedSpent = summary ? summary.month_spent * anim : 0;
-  const displayedDaily = summary?.daily_budget != null ? summary.daily_budget * anim : null;
+  // Pay-period helpers for projection and daily allowance
+  const periodStart = useMemo(() => computePeriodStart(viewYear, viewMonth, paycheckDay), [viewYear, viewMonth, paycheckDay]);
+  const periodDays = useMemo(() => computePeriodDays(viewYear, viewMonth, paycheckDay), [viewYear, viewMonth, paycheckDay]);
+  const periodEnd = useMemo(() => computePeriodEnd(viewYear, viewMonth, paycheckDay), [viewYear, viewMonth, paycheckDay]);
+  const isCurrentPeriod = useMemo(() => {
+    const now = new Date();
+    return now >= periodStart && now < periodEnd;
+  }, [periodStart, periodEnd]);
+  const periodSpendings = useMemo(() => filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay), [spendings, viewYear, viewMonth, paycheckDay]);
+  const periodSpentTotal = useMemo(() => periodSpendings.reduce((a, s) => a + s.amount, 0), [periodSpendings]);
+  const periodSpentToDate = useMemo(() => {
+    if (!isCurrentPeriod) return 0;
+    const now = new Date();
+    return periodSpendings.filter((s) => new Date(s.spent_at) < now).reduce((a, s) => a + s.amount, 0);
+  }, [periodSpendings, isCurrentPeriod]);
+  const displayedDaily = useMemo(() => {
+    if (!summary?.month_goal || !isCurrentPeriod) return null;
+    const now = new Date();
+    const MS = 24*60*60*1000;
+    const startMid = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate());
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const elapsed = Math.max(0, Math.min(periodDays, Math.floor((todayMid - startMid) / MS) + 1));
+    const remaining = Math.max(0, periodDays - elapsed);
+    if (remaining <= 0) return 0;
+    const remainingBudget = Math.max(0, summary.month_goal - periodSpentToDate);
+    return (remainingBudget / remaining) * anim;
+  }, [summary?.month_goal, isCurrentPeriod, periodStart, periodDays, periodSpentToDate, anim]);
   const goalProgress = useMemo(() => {
     if (!summary || !summary.month_goal) return 0;
     const pct = Math.min(100, Math.round((displayedSpent / summary.month_goal) * 100));
@@ -147,15 +173,44 @@ export default function DashboardPage() {
 
   const projectedPercent = useMemo(() => {
     if (!summary || !summary.month_goal) return null;
-    // Only compute projection for current month
-    if (!isCurrentMonth) return null;
+    if (!isCurrentPeriod) return null;
     const now = new Date();
-    const daysElapsed = now.getDate();
-    const avgSoFar = daysElapsed > 0 ? summary.month_spent / daysElapsed : 0;
-    const projectedTotal = summary.month_spent + avgSoFar * summary.days_remaining;
-    const pct = Math.max(0, Math.min(100, Math.round((projectedTotal / summary.month_goal) * 100)));
-    return { projectedTotal, pct };
-  }, [summary, isCurrentMonth]);
+    const MS = 24*60*60*1000;
+    const startMid = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate());
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const elapsed = Math.max(0, Math.min(periodDays, Math.floor((todayMid - startMid) / MS) + 1));
+    const remaining = Math.max(0, periodDays - elapsed);
+    const avgSoFar = elapsed > 0 ? (periodSpentToDate / elapsed) : 0;
+    const projectedTotal = periodSpentToDate + avgSoFar * remaining;
+    const pctRaw = Math.round((projectedTotal / summary.month_goal) * 100);
+    const pct = Math.max(0, Math.min(100, pctRaw));
+    return { projectedTotal, pct, pctRaw };
+  }, [summary, isCurrentPeriod, periodStart, periodDays, periodSpentToDate]);
+
+  const idealByTodayPct = useMemo(() => {
+    if (!summary?.month_goal) return null;
+    if (!isCurrentPeriod) return null;
+    const now = new Date();
+    const MS = 24*60*60*1000;
+    const startMid = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate());
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const elapsed = Math.max(0, Math.min(periodDays, Math.floor((todayMid - startMid) / MS) + 1));
+    const idealSoFar = summary.month_goal * (elapsed / periodDays);
+    const pct = Math.max(0, Math.min(100, Math.round((idealSoFar / summary.month_goal) * 100)));
+    return pct;
+  }, [summary?.month_goal, isCurrentPeriod, periodStart, periodDays]);
+
+  const periodProgress = useMemo(() => {
+    if (!isCurrentPeriod) return null;
+    const now = new Date();
+    const MS = 24*60*60*1000;
+    const startMid = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate());
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const elapsed = Math.max(0, Math.min(periodDays, Math.floor((todayMid - startMid) / MS) + 1));
+    const remaining = Math.max(0, periodDays - elapsed);
+    const remainingPct = (remaining / periodDays) * 100;
+    return { remaining, remainingPct };
+  }, [isCurrentPeriod, periodStart, periodDays]);
 
   async function onSpendingCreated(data) {
     setSpendings((s) => [data, ...s]);
@@ -257,7 +312,7 @@ export default function DashboardPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="1.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.35 1.04V21a2 2 0 1 1-4 0v-.06a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.04-.35H8.6a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.04-.35H3a2 2 0 1 1 0-4h.06c.39 0 .77-.12 1.04-.35.29-.26.49-.62.6-1 0 0 0-.01 0-.01A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.66 1.82.33.36-.18.72-.38 1-.6.23-.27.35-.65.35-1.04V3a2 2 0 1 1 4 0v.06c0 .39.12.77.35 1.04.29.22.64.42 1 .6.63.33 1.33.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.39.18.77.38 1 .6.27.23.6.35.99.35H21a2 2 0 1 1 0 4h-.06c-.39 0-.72.12-.99.35-.23.2-.43.6-.55 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               <span className="hidden sm:inline">Settings</span>
             </Link>
-            <button onClick={() => { localStorage.removeItem("token"); window.location.href = "/login"; }} className="h-9 px-3 rounded-md border border-white/15 backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white hover:ring-1 hover:ring-white/30 transition flex items-center gap-2">
+            <button onClick={() => { localStorage.removeItem("token"); window.location.href = "/finance-pal/login"; }} className="h-9 px-3 rounded-md border border-white/15 backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white hover:ring-1 hover:ring-white/30 transition flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-80"><path d="M15 17l5-5-5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M20 12H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               <span className="hidden sm:inline">Logout</span>
             </button>
@@ -283,16 +338,45 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div className="h-3 w-full rounded-full overflow-hidden relative border border-black/10 dark:border-white/15" style={{ background: "rgba(0,0,0,0.05)" }}>
-                  {(!isCurrentMonth && goalProgress > 0 && goalProgress < 100) && (
-                    <div className="absolute inset-0 bg-green-500/25" />
-                  )}
-                  <div className="relative h-full" style={{ width: `${goalProgress}%`, backgroundColor: mixColor("#22d3ee", "#8b5cf6", Math.min(1, goalProgress/100)) }} />
+                <div className="relative">
+                  <div className="h-3 w-full rounded-full overflow-hidden relative border border-black/10 dark:border-white/15" style={{ background: "rgba(0,0,0,0.05)" }}>
+                    {(!isCurrentMonth && goalProgress > 0 && goalProgress < 100) && (
+                      <div className="absolute inset-0 bg-green-500/25" />
+                    )}
+                    <div className="relative h-full" style={{ width: `${goalProgress}%`, backgroundColor: mixColor("#22d3ee", "#8b5cf6", Math.min(1, goalProgress/100)) }} />
+                  </div>
+                  {/* Indicators overlay (not clipped) */}
                   {projectedPercent && (
-                    <div className="relative h-0">
-                      <div className="absolute -top-3 h-6 w-0.5 bg-[#a78bfa] transition-[left] duration-500" style={{ left: `${projectedPercent.pct * anim}%` }} title="Projected" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
+                      {projectedPercent.pctRaw > 100 ? (
+                        // Overspend: show only one indicator (badge at right edge)
+                        <div className="absolute -top-8 right-0 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap flex items-center gap-1">
+                          <span>Projected {projectedPercent.pctRaw}%</span>
+                          <span aria-hidden>↗</span>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Marker at position */}
+                          <div className="absolute -top-3 h-6 w-0.5 bg-[#a78bfa]" style={{ left: `${projectedPercent.pct * anim}%` }} />
+                          {/* Badge-styled label aligned to marker */}
+                          <div className={`absolute -top-8 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap ${tooltipAlignClass(projectedPercent.pct * anim)}`} style={{ left: `${projectedPercent.pct * anim}%` }}>
+                            Projected
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
+                  {idealByTodayPct != null && periodProgress ? (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
+                      {/* Marker */}
+                      <div className="absolute -top-3 h-6 w-0.5 bg-[#22d3ee]" style={{ left: `${idealByTodayPct * anim}%` }} />
+                      {/* Badge-styled label aligned to marker */}
+                      <div className={`absolute -top-8 text-xs px-2 py-0.5 rounded bg-[#22d3ee]/20 text-[#22d3ee] border border-[#22d3ee]/40 whitespace-nowrap ${tooltipAlignClass(idealByTodayPct * anim)}`} style={{ left: `${idealByTodayPct * anim}%` }}>
+                        {`${periodProgress.remaining} days to go (${periodProgress.remainingPct.toFixed(1)}%)`
+                        }
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 <p className="text-sm mt-2 text-black/60 dark:text-white/60">
                   {displayedSpent.toFixed(2)} / {summary.month_goal ? summary.month_goal.toFixed(2) : "—"} {summary.currency}
@@ -302,22 +386,28 @@ export default function DashboardPage() {
                     {projectedPercent ? (
                       <>Projected: <span className="text-black dark:text-white">{(projectedPercent.projectedTotal * anim).toFixed(2)} {summary.currency}</span></>
                     ) : (
-                      <span className="opacity-70">Projection available for current month only</span>
+                      <span className="opacity-70">{!isCurrentPeriod ? 'Projection available for current period only' : 'Set a goal to see projection and daily allowance'}</span>
                     )}
                   </div>
                   {/* Goal quick-edit overlay (absolute, expands left, doesn't shift layout) */}
                   <div className="absolute bottom-2 right-2 z-10">
                     {!editingGoal ? (
-                      <button
-                        aria-label="Edit goal"
-                        onClick={() => { setEditingGoal(true); setGoalAmount(String(summary?.month_goal ?? '')); }}
-                        className="h-9 w-9 rounded-md border border-white/20 backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white hover:ring-1 hover:ring-white/30 transition"
-                      >
-                        {/* Pencil (edit) icon */}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
-                          <path d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75L3 17.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
+                      <div className="relative">
+                        {isCurrentPeriod && !summary?.month_goal && (
+                          <span className="pointer-events-none absolute -inset-1 rounded-md animate-ping bg-[#22d3ee]/30" />
+                        )}
+                        <button
+                          aria-label="Edit goal"
+                          onClick={() => { setEditingGoal(true); setGoalAmount(String(summary?.month_goal ?? '')); }}
+                          className="relative h-9 w-9 rounded-md border border-white/20 backdrop-blur supports-[backdrop-filter]:bg-white/5 text-white hover:ring-1 hover:ring-white/30 transition"
+                          title={!summary?.month_goal ? 'Set a goal' : 'Edit goal'}
+                        >
+                          {/* Pencil (edit) icon */}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto">
+                            <path d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75L3 17.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </div>
                     ) : (
                       <div className="relative">
                         <input
@@ -353,9 +443,13 @@ export default function DashboardPage() {
             ) : (
               <>
                 <p className="text-4xl font-semibold tracking-tight">
-                  {isCurrentMonth && summary.daily_budget != null ? `${displayedDaily?.toFixed(2)} ${summary.currency}` : "—"}
+                  {displayedDaily != null ? `${displayedDaily.toFixed(2)} ${summary.currency}` : "—"}
                 </p>
-                <p className="text-sm text-black/60 dark:text-white/60">{isCurrentMonth ? `${summary.days_remaining} day(s) remaining` : "Only for current month"}</p>
+                <p className="text-sm text-black/60 dark:text-white/60">
+                  {isCurrentPeriod
+                    ? (summary?.month_goal ? `${Math.max(0, periodDays - Math.max(0, Math.min(periodDays, Math.floor((new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) - new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()))/(24*60*60*1000)) + 1)))} day(s) remaining` : 'Set a goal to see today\'s allowance')
+                    : 'Only for current period'}
+                </p>
               </>
             )}
           </div>
@@ -372,7 +466,29 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <DonutChart data={filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay)} categories={categories} currency={summary.currency} anim={anim} />
+              <DonutChart
+                data={filterSpendingsByPayPeriod(spendings, viewYear, viewMonth, paycheckDay)}
+                categories={categories}
+                currency={summary.currency}
+                anim={anim}
+                onCategoryPick={(label) => {
+                  try {
+                    // Find top-spend day for this category within current pay period
+                    const nameFor = (s) => s.category_id ? (categories.find(c => c.id === s.category_id)?.name || "Other") : "Other";
+                    const filtered = periodSpendings.filter((s) => nameFor(s) === label);
+                    if (filtered.length === 0) return;
+                    const map = new Map();
+                    for (const s of filtered) {
+                      const d = new Date(s.spent_at);
+                      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                      map.set(key, (map.get(key) || 0) + s.amount);
+                    }
+                    let bestKey = null, bestVal = -Infinity;
+                    for (const [k, v] of map.entries()) { if (v > bestVal) { bestVal = v; bestKey = k; } }
+                    if (bestKey) { setHoverKey(bestKey); scrollToDay(bestKey); }
+                  } catch {}
+                }}
+              />
             )}
           </div>
           <div className="rounded-xl border border-black/10 dark:border-white/15 p-5 backdrop-blur supports-[backdrop-filter]:bg-white/5 dark:supports-[backdrop-filter]:bg-black/20 relative overflow-hidden">
@@ -388,9 +504,8 @@ export default function DashboardPage() {
                 currency={summary.currency}
                 selectedDay={filterDay}
                 onSelectDay={(d)=>scrollToDay(d)}
-                ownerKey="line"
-                tooltipOwner={tooltipOwner}
-                setTooltipOwner={setTooltipOwner}
+                hoverKey={hoverKey}
+                setHoverKey={setHoverKey}
               />
             )}
           </div>
@@ -408,9 +523,8 @@ export default function DashboardPage() {
                 currency={summary.currency}
                 selectedDay={filterDay}
                 onSelectDay={(d)=>scrollToDay(d)}
-                ownerKey="cumulative"
-                tooltipOwner={tooltipOwner}
-                setTooltipOwner={setTooltipOwner}
+                hoverKey={hoverKey}
+                setHoverKey={setHoverKey}
               />
             )}
           </div>
@@ -436,14 +550,20 @@ export default function DashboardPage() {
                 startDate={computePeriodStart(viewYear, viewMonth, paycheckDay)}
                 numDays={computePeriodDays(viewYear, viewMonth, paycheckDay)}
                 selectedDay={filterDay}
-                onChange={(key) => { if (!key) { setFilterDay(null); return; } scrollToDay(key); }}
+                onChange={(key) => { setFilterDay(key); if (key) scrollToDay(key); }}
               />
             )}
           </div>
           <div ref={listRef} className="space-y-2 max-h-[360px] overflow-auto pr-1">
             {(() => {
-              // Sort within a day by amount desc when a day is selected; otherwise keep chronological
-              const arr = filterDay ? spendings
+              // Limit to pay period and sort within a selected day by amount desc
+              const start = computePeriodStart(viewYear, viewMonth, paycheckDay);
+              const end = computePeriodEnd(viewYear, viewMonth, paycheckDay);
+              const inPeriod = spendings.filter((s) => {
+                const d = new Date(s.spent_at);
+                return d >= start && d < end;
+              });
+              const arr = filterDay ? inPeriod
                 .filter((s) => {
                   const d = new Date(s.spent_at);
                   const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -451,7 +571,7 @@ export default function DashboardPage() {
                 })
                 .slice()
                 .sort((a, b) => b.amount - a.amount)
-                : spendings;
+                : inPeriod;
               return arr.map((s) => {
                 const d = new Date(s.spent_at);
                 const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -564,7 +684,7 @@ function MonthPickerVertical({ year, month, onChange }) {
   );
 }
 
-function DonutChart({ data, categories, currency, anim = 1 }) {
+function DonutChart({ data, categories, currency, anim = 1, onCategoryPick }) {
   const [activeLabel, setActiveLabel] = useState(null);
   const totals = new Map();
   data.forEach((s) => {
@@ -629,7 +749,7 @@ function DonutChart({ data, categories, currency, anim = 1 }) {
         )}
         <g {...(useClip ? { clipPath: `url(#${sweepId})` } : {})}>
           {arcs.map((a, i) => (
-            <path key={i} d={a.d} fill={a.color} opacity={hoverIdx === i || activeLabel === a.label ? "1" : "0.85"} transform={hoverIdx === i || activeLabel === a.label ? `translate(${a.offsetX} ${a.offsetY})` : undefined} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => setActiveLabel(a.label)}>
+            <path key={i} d={a.d} fill={a.color} opacity={hoverIdx === i || activeLabel === a.label ? "1" : "0.85"} transform={hoverIdx === i || activeLabel === a.label ? `translate(${a.offsetX} ${a.offsetY})` : undefined} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => { setActiveLabel(a.label); onCategoryPick?.(a.label); }}>
               <title>{`${a.label}: ${a.value.toFixed(2)} ${currency}`}</title>
             </path>
           ))}
@@ -638,7 +758,7 @@ function DonutChart({ data, categories, currency, anim = 1 }) {
       </svg>
       <div className="text-sm space-y-1 max-h-[200px] overflow-auto pr-1" ref={legendRef}>
         {entries.map(([name, v], i) => (
-          <div key={name} data-label={name} className={`flex items-center gap-2 px-1 rounded ${activeLabel === name ? 'bg-white/10' : ''}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => setActiveLabel(name)}>
+          <div key={name} data-label={name} className={`flex items-center gap-2 px-1 rounded ${activeLabel === name ? 'bg-white/10' : ''}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => { setActiveLabel(name); onCategoryPick?.(name); }}>
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colors[i % colors.length] }}></span>
             {(v * anim).toFixed(2)} {currency} — {name}
           </div>
@@ -683,8 +803,28 @@ function filterSpendingsByPayPeriod(spendings, year, month, paycheckDay) {
     return d >= start && d < end;
   });
 }
+function formatDayKey(key) {
+  try {
+    const [y, m, d] = key.split('-').map((x) => parseInt(x, 10));
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch {
+    return key;
+  }
+}
 
-function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay, ownerKey, tooltipOwner, setTooltipOwner }) {
+function tooltipAlignClass(percent) {
+  try {
+    const p = Number(percent) || 0;
+    if (p <= 8) return 'translate-x-0';
+    if (p >= 92) return '-translate-x-full';
+    return '-translate-x-1/2';
+  } catch {
+    return '-translate-x-1/2';
+  }
+}
+
+function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay, hoverKey, setHoverKey }) {
   // group by day in pay period
   const dayToSum = new Map();
   data.forEach((s) => {
@@ -745,7 +885,7 @@ function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDa
   };
   return (
     <div ref={ref} className="w-full">
-      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); if (tooltipOwner === ownerKey) setTooltipOwner(null); }} onMouseEnter={() => { setTooltipOwner(ownerKey); }}>
+      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); setHoverKey(null); }}>
         <defs>
           <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.8" />
@@ -761,24 +901,31 @@ function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDa
           const key = dayKeys[i];
           return (
             <g key={i}>
-              <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(key)} />
+              <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => { setHover({ i, v, x, y }); setHoverKey(key); }} onClick={() => onSelectDay?.(key)} />
               <circle cx={x} cy={y} r={hover?.i === i ? 5 : (selectedDay === key ? 5 : 3)} fill={selectedDay === key ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
             </g>
           );
         })}
-        {hover && tooltipOwner === ownerKey && (
-          <g>
-            <line x1={hover.x} x2={hover.x} y1={padding} y2={h - padding} stroke="#ffffff30" />
-            <rect x={Math.min(Math.max(hover.x + 8, padding), w - 148)} y={Math.max(hover.y - 28, padding)} width="140" height="26" rx="6" fill="#0b0b0bcc" />
-            <text x={Math.min(Math.max(hover.x + 14, padding + 6), w - 140 + 6)} y={Math.max(hover.y - 11, padding + 12)} fill="#fff" fontSize="12">Day {hover.i + 1}: {hover.v.toFixed(2)} {currency}</text>
-          </g>
-        )}
+        {(() => {
+          const idx = hover?.i ?? (hoverKey ? dayKeys.indexOf(hoverKey) : -1);
+          if (idx == null || idx < 0) return null;
+          const x = xAt(idx);
+          const y = yAt(values[idx]);
+          const label = formatDayKey(dayKeys[idx]);
+          return (
+            <g>
+              <line x1={x} x2={x} y1={padding} y2={h - padding} stroke="#ffffff30" />
+              <rect x={Math.min(Math.max(x + 8, padding), w - 180)} y={Math.max(y - 28, padding)} width="172" height="26" rx="6" fill="#0b0b0bcc" />
+              <text x={Math.min(Math.max(x + 14, padding + 6), w - 172 + 6)} y={Math.max(y - 11, padding + 12)} fill="#fff" fontSize="12">{label}: {values[idx].toFixed(2)} {currency}</text>
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );
 }
 
-function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay, onSelectDay, ownerKey, tooltipOwner, setTooltipOwner }) {
+function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay, onSelectDay, hoverKey, setHoverKey }) {
   const h = 200, padding = 16;
   const byDay = new Map();
   data.forEach((s) => {
@@ -829,25 +976,32 @@ function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay
   const idealPathD = goal ? `M ${padding} ${yAt(0)} L ${w - padding} ${yAt(goal)}` : "";
   return (
     <div ref={ref} className="w-full">
-      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); if (tooltipOwner === ownerKey) setTooltipOwner(null); }} onMouseEnter={() => { setTooltipOwner(ownerKey); }}>
+      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); setHoverKey(null); }}>
         {goal && (
           <path ref={pathRefIdeal} d={idealPathD} fill="none" stroke="#22d3ee" strokeDasharray={4} style={{ strokeDasharray: pathLenIdeal, strokeDashoffset: Math.max(0, (1 - drawPIdeal) * pathLenIdeal) }} />
         )}
         <path ref={pathRef} d={points.map((v,i)=>`${i===0?"M":"L"} ${xAt(i)} ${yAt(v)}`).join(" ")} fill="none" stroke="#8b5cf6" strokeWidth="2" style={{ strokeDasharray: pathLen, strokeDashoffset: Math.max(0, (1 - drawP) * pathLen) }} />
         {points.map((v, i) => { const { left, right } = bandX(i); const x = xAt(i); const y = yAt(v); const visible = drawP >= (i / Math.max(1, points.length - 1)); const key = dayKeys[i]; const isSel = selectedDay === key; return (
           <g key={i}>
-            <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => setHover({ i, v, x, y })} onClick={() => onSelectDay?.(key)} />
+            <rect x={left} y={padding} width={Math.max(0, right - left)} height={h - padding * 2} fill="transparent" onMouseMove={() => { setHover({ i, v, x, y }); setHoverKey(key); }} onClick={() => onSelectDay?.(key)} />
             <circle cx={x} cy={y} r={hover?.i === i ? 5 : (isSel ? 5 : 3)} fill={isSel ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
           </g>
         ); })}
-        {hover && tooltipOwner === ownerKey && (
-          <g>
-            <line x1={hover.x} x2={hover.x} y1={padding} y2={h - padding} stroke="#ffffff30" />
-            <rect x={Math.min(Math.max(hover.x + 8, padding), w - 200)} y={Math.max(hover.y - 40, padding)} width="192" height="38" rx="6" fill="#0b0b0bcc" />
-            <text x={Math.min(Math.max(hover.x + 14, padding + 6), w - 192 + 6)} y={Math.max(hover.y - 23, padding + 12)} fill="#fff" fontSize="12">Day {hover.i + 1} — Cum: {hover.v.toFixed(2)} {currency}</text>
-            {goal && <text x={Math.min(Math.max(hover.x + 14, padding + 6), w - 192 + 6)} y={Math.max(hover.y - 9, padding + 24)} fill="#aee" fontSize="12">Ideal: {(goal * (hover.i/Math.max(1, points.length-1))).toFixed(2)} {currency}</text>}
-          </g>
-        )}
+        {(() => {
+          const idx = hover?.i ?? (hoverKey ? dayKeys.indexOf(hoverKey) : -1);
+          if (idx == null || idx < 0) return null;
+          const x = xAt(idx);
+          const y = yAt(points[idx]);
+          const label = formatDayKey(dayKeys[idx]);
+          return (
+            <g>
+              <line x1={x} x2={x} y1={padding} y2={h - padding} stroke="#ffffff30" />
+              <rect x={Math.min(Math.max(x + 8, padding), w - 220)} y={Math.max(y - 40, padding)} width="212" height="38" rx="6" fill="#0b0b0bcc" />
+              <text x={Math.min(Math.max(x + 14, padding + 6), w - 212 + 6)} y={Math.max(y - 23, padding + 12)} fill="#fff" fontSize="12">{label} — Cum: {points[idx].toFixed(2)} {currency}</text>
+              {goal && <text x={Math.min(Math.max(x + 14, padding + 6), w - 212 + 6)} y={Math.max(y - 9, padding + 24)} fill="#aee" fontSize="12">Ideal: {(goal * (idx/Math.max(1, points.length-1))).toFixed(2)} {currency}</text>}
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );
