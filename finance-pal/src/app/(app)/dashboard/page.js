@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [filterDay, setFilterDay] = useState(null); // YYYY-MM-DD or null
   const [loading, setLoading] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
+  const [tooltipOwner, setTooltipOwner] = useState(null); // 'line' | 'cumulative' | null
 
   useEffect(() => {
     let active = true;
@@ -387,6 +388,9 @@ export default function DashboardPage() {
                 currency={summary.currency}
                 selectedDay={filterDay}
                 onSelectDay={(d)=>scrollToDay(d)}
+                ownerKey="line"
+                tooltipOwner={tooltipOwner}
+                setTooltipOwner={setTooltipOwner}
               />
             )}
           </div>
@@ -404,6 +408,9 @@ export default function DashboardPage() {
                 currency={summary.currency}
                 selectedDay={filterDay}
                 onSelectDay={(d)=>scrollToDay(d)}
+                ownerKey="cumulative"
+                tooltipOwner={tooltipOwner}
+                setTooltipOwner={setTooltipOwner}
               />
             )}
           </div>
@@ -434,24 +441,36 @@ export default function DashboardPage() {
             )}
           </div>
           <div ref={listRef} className="space-y-2 max-h-[360px] overflow-auto pr-1">
-            {spendings.map((s) => {
-              const d = new Date(s.spent_at);
-              const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-              if (filterDay && key !== filterDay) return null;
-              return (
-                <div key={s.id} data-day={key} className="flex items-center justify-between text-sm border-b border-black/5 dark:border-white/10 py-2">
-                  <div className="truncate">
-                    <div className="font-medium">{s.description || (s.category_id ? categories.find(c => c.id === s.category_id)?.name : "Spending")}</div>
-                    <div className="text-black/60 dark:text-white/60">{d.toLocaleString()}</div>
+            {(() => {
+              // Sort within a day by amount desc when a day is selected; otherwise keep chronological
+              const arr = filterDay ? spendings
+                .filter((s) => {
+                  const d = new Date(s.spent_at);
+                  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  return key === filterDay;
+                })
+                .slice()
+                .sort((a, b) => b.amount - a.amount)
+                : spendings;
+              return arr.map((s) => {
+                const d = new Date(s.spent_at);
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                if (filterDay && key !== filterDay) return null;
+                return (
+                  <div key={s.id} data-day={key} className="flex items-center justify-between text-sm border-b border-black/5 dark:border-white/10 py-2">
+                    <div className="truncate">
+                      <div className="font-medium">{s.description || (s.category_id ? categories.find(c => c.id === s.category_id)?.name : "Spending")}</div>
+                      <div className="text-black/60 dark:text-white/60">{d.toLocaleString()}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono">{s.amount.toFixed(2)} {s.currency}</div>
+                      <button onClick={() => openEditSpending(s)} className="text-xs underline">Edit</button>
+                      <button onClick={() => deleteSpending(s.id)} className="text-xs underline text-red-500">Delete</button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="font-mono">{s.amount.toFixed(2)} {s.currency}</div>
-                    <button onClick={() => openEditSpending(s)} className="text-xs underline">Edit</button>
-                    <button onClick={() => deleteSpending(s.id)} className="text-xs underline text-red-500">Delete</button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </section>
@@ -546,12 +565,13 @@ function MonthPickerVertical({ year, month, onChange }) {
 }
 
 function DonutChart({ data, categories, currency, anim = 1 }) {
+  const [activeLabel, setActiveLabel] = useState(null);
   const totals = new Map();
   data.forEach((s) => {
     const name = s.category_id ? (categories.find(c => c.id === s.category_id)?.name || "Other") : "Other";
     totals.set(name, (totals.get(name) || 0) + s.amount);
   });
-  const entries = Array.from(totals.entries());
+  const entries = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
   const sum = entries.reduce((a, [, v]) => a + v, 0) || 1;
   const colors = ["#22d3ee", "#8b5cf6", "#f472b6", "#34d399", "#f59e0b", "#ef4444"]; // neon-ish accents
   let angle = 0;
@@ -593,8 +613,14 @@ function DonutChart({ data, categories, currency, anim = 1 }) {
   const sector = `M ${cx} ${cy} L ${sx} ${sy} A ${radius + 5} ${radius + 5} 0 ${largeArc} 1 ${ex} ${ey} Z`;
   const useClip = t < 0.999;
   const [hoverIdx, setHoverIdx] = useState(null);
+  const legendRef = useRef(null);
+  useEffect(() => {
+    if (!legendRef.current || !activeLabel) return;
+    const el = legendRef.current.querySelector(`[data-label="${CSS.escape(activeLabel)}"]`);
+    if (el) { el.scrollIntoView({ block: 'nearest' }); }
+  }, [activeLabel]);
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-start gap-4">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {useClip && (
           <clipPath id={sweepId}>
@@ -603,16 +629,16 @@ function DonutChart({ data, categories, currency, anim = 1 }) {
         )}
         <g {...(useClip ? { clipPath: `url(#${sweepId})` } : {})}>
           {arcs.map((a, i) => (
-            <path key={i} d={a.d} fill={a.color} opacity={hoverIdx === i ? "1" : "0.9"} transform={hoverIdx === i ? `translate(${a.offsetX} ${a.offsetY})` : undefined} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
+            <path key={i} d={a.d} fill={a.color} opacity={hoverIdx === i || activeLabel === a.label ? "1" : "0.85"} transform={hoverIdx === i || activeLabel === a.label ? `translate(${a.offsetX} ${a.offsetY})` : undefined} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => setActiveLabel(a.label)}>
               <title>{`${a.label}: ${a.value.toFixed(2)} ${currency}`}</title>
             </path>
           ))}
         </g>
         <circle cx={cx} cy={cy} r={50} fill="var(--background)" />
       </svg>
-      <div className="text-sm space-y-1">
+      <div className="text-sm space-y-1 max-h-[200px] overflow-auto pr-1" ref={legendRef}>
         {entries.map(([name, v], i) => (
-          <div key={name} className="flex items-center gap-2" onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
+          <div key={name} data-label={name} className={`flex items-center gap-2 px-1 rounded ${activeLabel === name ? 'bg-white/10' : ''}`} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)} onClick={() => setActiveLabel(name)}>
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: colors[i % colors.length] }}></span>
             {(v * anim).toFixed(2)} {currency} — {name}
           </div>
@@ -658,7 +684,7 @@ function filterSpendingsByPayPeriod(spendings, year, month, paycheckDay) {
   });
 }
 
-function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay }) {
+function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDay, ownerKey, tooltipOwner, setTooltipOwner }) {
   // group by day in pay period
   const dayToSum = new Map();
   data.forEach((s) => {
@@ -719,7 +745,7 @@ function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDa
   };
   return (
     <div ref={ref} className="w-full">
-      <svg width={w} height={h} className="block" onMouseLeave={() => setHover(null)}>
+      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); if (tooltipOwner === ownerKey) setTooltipOwner(null); }} onMouseEnter={() => { setTooltipOwner(ownerKey); }}>
         <defs>
           <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.8" />
@@ -740,7 +766,7 @@ function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDa
             </g>
           );
         })}
-        {hover && (
+        {hover && tooltipOwner === ownerKey && (
           <g>
             <line x1={hover.x} x2={hover.x} y1={padding} y2={h - padding} stroke="#ffffff30" />
             <rect x={Math.min(Math.max(hover.x + 8, padding), w - 148)} y={Math.max(hover.y - 28, padding)} width="140" height="26" rx="6" fill="#0b0b0bcc" />
@@ -752,7 +778,7 @@ function LineChart({ data, startDate, numDays, currency, selectedDay, onSelectDa
   );
 }
 
-function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay, onSelectDay }) {
+function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay, onSelectDay, ownerKey, tooltipOwner, setTooltipOwner }) {
   const h = 200, padding = 16;
   const byDay = new Map();
   data.forEach((s) => {
@@ -803,7 +829,7 @@ function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay
   const idealPathD = goal ? `M ${padding} ${yAt(0)} L ${w - padding} ${yAt(goal)}` : "";
   return (
     <div ref={ref} className="w-full">
-      <svg width={w} height={h} className="block" onMouseLeave={() => setHover(null)}>
+      <svg width={w} height={h} className="block" onMouseLeave={() => { setHover(null); if (tooltipOwner === ownerKey) setTooltipOwner(null); }} onMouseEnter={() => { setTooltipOwner(ownerKey); }}>
         {goal && (
           <path ref={pathRefIdeal} d={idealPathD} fill="none" stroke="#22d3ee" strokeDasharray={4} style={{ strokeDasharray: pathLenIdeal, strokeDashoffset: Math.max(0, (1 - drawPIdeal) * pathLenIdeal) }} />
         )}
@@ -814,7 +840,7 @@ function CumulativeChart({ data, goal, startDate, numDays, currency, selectedDay
             <circle cx={x} cy={y} r={hover?.i === i ? 5 : (isSel ? 5 : 3)} fill={isSel ? '#22d3ee' : '#8b5cf6'} opacity={visible ? 1 : 0} />
           </g>
         ); })}
-        {hover && (
+        {hover && tooltipOwner === ownerKey && (
           <g>
             <line x1={hover.x} x2={hover.x} y1={padding} y2={h - padding} stroke="#ffffff30" />
             <rect x={Math.min(Math.max(hover.x + 8, padding), w - 200)} y={Math.max(hover.y - 40, padding)} width="192" height="38" rx="6" fill="#0b0b0bcc" />
