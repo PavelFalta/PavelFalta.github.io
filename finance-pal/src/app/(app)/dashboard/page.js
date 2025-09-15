@@ -360,13 +360,16 @@ export default function DashboardPage() {
                         {projectedPercent && (
                           <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
                             {projectedPercent.pctRaw > 100 ? (
-                              <div className="absolute top-4 right-0 text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap flex items-center gap-1">
-                                <span>{projectedPercent.pctRaw}% ↗</span>
+                              <div className="absolute top-4 right-0 text-[11px] px-1.5 py-0 rounded-sm bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap flex items-center gap-0.5">
+                                <span>{projectedPercent.pctRaw}%</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                                  <path d="M7 17L17 7M9 7h8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </div>
                             ) : (
                               <>
                                 <div className="absolute -top-3 h-6 w-0.5 bg-[#a78bfa]" style={{ left: `${projectedPercent.pct * anim}%` }} />
-                                <div className={`absolute ${v1} text-xs px-2 py-0.5 rounded bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap ${tooltipAlignClass(left1)}`} style={{ left: `${left1}%` }}>
+                                <div className={`absolute ${v1} text-[11px] px-1.5 py-0 rounded-sm bg-[#a78bfa]/20 text-[#a78bfa] border border-[#a78bfa]/40 whitespace-nowrap ${tooltipAlignClass(left1)}`} style={{ left: `${left1}%` }}>
                                   Projected
                                 </div>
                               </>
@@ -376,7 +379,7 @@ export default function DashboardPage() {
                         {idealByTodayPct != null && periodProgress && (
                           <div className="pointer-events-none absolute inset-x-0 top-0 h-0">
                             <div className="absolute -top-3 h-6 w-0.5 bg-[#22d3ee]" style={{ left: `${idealByTodayPct * anim}%` }} />
-                            <div className={`absolute ${v2} text-xs px-2 py-0.5 rounded bg-[#22d3ee]/20 text-[#22d3ee] border border-[#22d3ee]/40 whitespace-nowrap ${tooltipAlignClass(left2)}`} style={{ left: `${left2}%` }}>
+                            <div className={`absolute ${v2} text-[11px] px-1.5 py-0 rounded-sm bg-[#22d3ee]/20 text-[#22d3ee] border border-[#22d3ee]/40 whitespace-nowrap ${tooltipAlignClass(left2)}`} style={{ left: `${left2}%` }}>
                               {`${periodProgress.remaining} days to go (${periodProgress.remainingPct.toFixed(1)}%)`}
                             </div>
                           </div>
