@@ -12,9 +12,9 @@ interface Project {
     hoverShadow?: string;
     textColor?: string;
     hoverTextColor?: string;
-    hoverEffect?: 'neon' | 'pulse' | 'traffic' | 'signalPulse' | 'heartbeat' | 'financePulse';
-  };
-}
+      hoverEffect?: 'neon' | 'pulse' | 'traffic' | 'signalPulse' | 'heartbeat' | 'financePulse' | 'bitcoinPulse';
+    };
+  }
 
 // Example project data (replace or add more as needed)
 const projects: Project[] = [
@@ -81,6 +81,19 @@ const projects: Project[] = [
       textColor: 'text-blue-300',
       hoverTextColor: 'text-indigo-200',
       hoverEffect: 'financePulse'
+    }
+  },
+  {
+    title: 'NADIR',
+    description: 'Bitcoin four-year cycle tracker — live BTC/USD, portfolio baseline in CZK, and a projected cycle-bottom path.',
+    url: '/nadir/',
+    styles: {
+      gradient: 'from-neutral-950 to-neutral-900',
+      shadow: 'rgba(255, 102, 0, 0.45)',
+      hoverShadow: 'rgba(255, 0, 170, 0.55)',
+      textColor: 'text-orange-400',
+      hoverTextColor: 'text-pink-400',
+      hoverEffect: 'bitcoinPulse'
     }
   },
   // Add other projects here
@@ -190,6 +203,26 @@ function ProjectCard({ project }: { project: Project }): React.ReactElement {
             stiffness: 400, 
             damping: 15 
           }
+        };
+      case 'bitcoinPulse':
+        return {
+          whileHover: {
+            scale: 1.05,
+            boxShadow: [
+              `0 0 18px rgba(255, 102, 0, 0.55), 0 0 8px rgba(0, 240, 255, 0.25)`,
+              `0 0 28px rgba(255, 0, 170, 0.55), 0 0 12px rgba(255, 102, 0, 0.35)`,
+              `0 0 18px rgba(255, 102, 0, 0.55), 0 0 8px rgba(0, 240, 255, 0.25)`,
+            ],
+            y: -5,
+          },
+          transition: {
+            boxShadow: {
+              duration: 1.4,
+              repeat: Infinity,
+              repeatType: 'loop' as const,
+            },
+            duration: 0.3,
+          },
         };
       default:
         return {
@@ -362,6 +395,45 @@ function ProjectCard({ project }: { project: Project }): React.ReactElement {
                 : '0 0 0px rgba(74, 222, 128, 0)',
             }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+          />
+        </div>
+      )}
+
+      {styles.hoverEffect === 'bitcoinPulse' && (
+        <div className="absolute right-4 top-4 flex items-center space-x-2">
+          <motion.svg
+            width="36"
+            height="18"
+            viewBox="0 0 36 18"
+            fill="none"
+            className="opacity-80"
+          >
+            <motion.path
+              d="M2 4 L8 8 L14 3 L20 12 L26 7 L34 14"
+              stroke="#ff00aa"
+              strokeWidth="2"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{
+                pathLength: isHovered ? 1 : 0,
+                opacity: isHovered ? 1 : 0,
+              }}
+              transition={{ duration: 0.9, ease: 'easeInOut' }}
+            />
+          </motion.svg>
+          <motion.div
+            className="w-2.5 h-2.5 bg-orange-500"
+            animate={{
+              boxShadow: isHovered
+                ? [
+                    '0 0 0px rgba(255, 102, 0, 0)',
+                    '0 0 12px rgba(255, 102, 0, 0.95)',
+                    '0 0 0px rgba(255, 102, 0, 0)',
+                  ]
+                : '0 0 0px rgba(255, 102, 0, 0)',
+            }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
       )}
